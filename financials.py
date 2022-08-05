@@ -123,7 +123,7 @@ class FinancialScraper:
         def grab_financial_data_for_ticker():
             
             ############ teraz połącz balance sheet i cashflows
-            financial_data = {}
+            _financial_data = {}
             date_of_download = date.today().strftime("%m/%d/%Y")
 
             def how_many_columns_in_table():
@@ -146,9 +146,9 @@ class FinancialScraper:
                         else:
                             month_and_year = "TTM"
                             
-                        financial_data.update({"Date_of_download":date_of_download})
-                        financial_data.update({"Date_of_statment":date_of_statement})
-                        financial_data.update({f"{key}|{month_and_year}":financial_value})
+                        _financial_data.update({"Date_of_download":date_of_download})
+                        _financial_data.update({"Date_of_statment":date_of_statement})
+                        _financial_data.update({f"{key}|{month_and_year}":financial_value})
 
             # INCOME STATEMENT
             xpaths_dict = self.generate_xpaths_for_financial_data(self.income_statement_positions_list, 
@@ -168,7 +168,7 @@ class FinancialScraper:
             how_many_columns = how_many_columns_in_table()                                                       
             grap_financial_data_for_specific_statement(range_end=how_many_columns)
             
-            return financial_data
+            return _inancial_data
 
         self.driver.get('https://finance.yahoo.com/quote/HLX/financials?p=HLX') 
         #self.driver.get('https://finance.yahoo.com/quote/BCE/financials?p=BCE')     
