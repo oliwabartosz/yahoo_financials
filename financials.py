@@ -168,7 +168,7 @@ class FinancialScraper:
             how_many_columns = how_many_columns_in_table()                                                       
             grap_financial_data_for_specific_statement(range_end=how_many_columns)
             
-            return _inancial_data
+            return _financial_data
 
         self.driver.get('https://finance.yahoo.com/quote/HLX/financials?p=HLX') 
         #self.driver.get('https://finance.yahoo.com/quote/BCE/financials?p=BCE')     
