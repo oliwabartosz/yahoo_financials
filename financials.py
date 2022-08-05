@@ -84,8 +84,8 @@ class FinancialScraper:
         def click_on_financial_statement_link(xpath:str):
             print("CLICKING:", xpath)
             self.driver.find_element("xpath", xpath).click()
-            #self.wait.until(EC.visibility_of_element_located((By.XPATH, "(//span[@class='Va(m)'])[last()]")))
-            time.sleep(10)
+            self.wait.until(EC.visibility_of_element_located((By.XPATH, "(//span[@class='Va(m)'])[last()]")))
+            #time.sleep(10)
             print('CLICKED:', xpath)
             return True
         
@@ -135,7 +135,10 @@ class FinancialScraper:
                 
                 for i in range(2, range_end+1, 1):
                     for key, value in xpaths_dict.items():
-                        financial_value = self.driver.find_element("xpath", f"{value}/../../../div[{i}]").text
+                        try:
+                            financial_value = self.driver.find_element("xpath", f"{value}/../../../div[{i}]").text
+                        except NoSuchElementException:
+                            continue
                         date_of_statement = self.driver.find_element("xpath", f"//span[text()='Breakdown']/../../div[{i}]").text
                     
                         if date_of_statement != "TTM":
@@ -167,10 +170,9 @@ class FinancialScraper:
             
             return financial_data
 
-        # https://finance.yahoo.com/quote/HLX/financials?p=HLX
-        self.driver.get('https://finance.yahoo.com/quote/BCE/financials?p=BCE')     
+        self.driver.get('https://finance.yahoo.com/quote/HLX/financials?p=HLX') 
+        #self.driver.get('https://finance.yahoo.com/quote/BCE/financials?p=BCE')     
         accept_cookie()
-        #self.expand_all_data_in_tables()
         self.financial_data.update(grab_financial_data_for_ticker())
 
     def main(self):
