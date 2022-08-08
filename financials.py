@@ -1,4 +1,27 @@
-from main import *
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import StaleElementReferenceException
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+from concurrent.futures import ThreadPoolExecutor
+from selenium.common.exceptions import TimeoutException
+from time import sleep
+import pickle
+import os
+import pandas as pd
+import requests
+import re
+import datetime
+import shutil
+import glob
+import time
+import logging
+
 from datetime import date
 
 
@@ -45,13 +68,18 @@ class FinancialScraper:
                                     'Free Cash Flow',
                                     ]
             
-    def get_tickers_links(self):
+    def get_tickers_links(self) -> list:
+        _tickers = []
+        _ticker_regex = r"https:\/\/finance\.yahoo\.com\/quote\/[A-Z-.]+\?p="
         if os.path.isfile('tickers.pkl'):
             self.tickers_quotes = pickle.load(open('tickers.pkl','rb'))
-            return self.tickers_quotes
+            for ticker in self.tickers_quotes:
+                ticker = ticker.split(re.findall(_ticker_regex, ticker)[0])[1]
+                _tickers.append(ticker)
+            return _tickers
         else:
             logging.warning("No tickers.pkl file.")
-            return False
+            return _tickers
 
     def transform_tickers_links_to_financial_statments_links(self):
         pass
@@ -110,19 +138,18 @@ class FinancialScraper:
 
         def accept_cookie():
             cookie_button_accept_xpath = "//button[@class='btn primary']"
-            self.wait.until(EC.visibility_of_element_located((By.XPATH, cookie_button_accept_xpath)))
             try:
+                self.wait.until(EC.visibility_of_element_located((By.XPATH, cookie_button_accept_xpath)))
                 self.driver.find_element("xpath", cookie_button_accept_xpath).click()
                 logging.warning("Cookies accepted.")
                 return True
             except TimeoutException as e:
+                print("Cookie confirmation not needed.")
                 return False
-        
-
-                        
-        def grab_financial_data_for_ticker():
+                
+                               
+        def grab_financial_data_for_ticker(ticker):
             
-            ############ teraz połącz balance sheet i cashflows
             _financial_data = {}
             date_of_download = date.today().strftime("%m/%d/%Y")
 
@@ -131,7 +158,7 @@ class FinancialScraper:
                 return how_many_columns_in_table
             
 
-            def grap_financial_data_for_specific_statement(range_end):
+            def grap_financial_data_for_specific_statement(range_end, ticker):
                 
                 for i in range(2, range_end+1, 1):
                     for key, value in xpaths_dict.items():
@@ -145,35 +172,41 @@ class FinancialScraper:
                             month_and_year = f"{date_of_statement.split('/')[0]}_{date_of_statement.split('/')[2]}"
                         else:
                             month_and_year = "TTM"
-                            
+                        
+                        _financial_data.update({"Ticker":ticker})
                         _financial_data.update({"Date_of_download":date_of_download})
                         _financial_data.update({"Date_of_statment":date_of_statement})
                         _financial_data.update({f"{key}|{month_and_year}":financial_value})
+                        
 
             # INCOME STATEMENT
             xpaths_dict = self.generate_xpaths_for_financial_data(self.income_statement_positions_list, 
                                                                     income_statement=True)
             how_many_columns = how_many_columns_in_table()
-            grap_financial_data_for_specific_statement(range_end=how_many_columns)
+            grap_financial_data_for_specific_statement(range_end=how_many_columns, ticker=ticker)
 
             # BALANCE SHEET
             xpaths_dict = self.generate_xpaths_for_financial_data(self.balance_sheet_positions_list, 
                                                                     balance_sheet=True)
             how_many_columns = how_many_columns_in_table()
-            grap_financial_data_for_specific_statement(range_end=how_many_columns)
+            grap_financial_data_for_specific_statement(range_end=how_many_columns, ticker=ticker)
 
 
             xpaths_dict = self.generate_xpaths_for_financial_data(self.cash_flow_positions_list, 
                                                                     cash_flow=True)
             how_many_columns = how_many_columns_in_table()                                                       
-            grap_financial_data_for_specific_statement(range_end=how_many_columns)
+            grap_financial_data_for_specific_statement(range_end=how_many_columns, ticker=ticker)
             
             return _financial_data
 
-        self.driver.get('https://finance.yahoo.com/quote/HLX/financials?p=HLX') 
-        #self.driver.get('https://finance.yahoo.com/quote/BCE/financials?p=BCE')     
-        accept_cookie()
-        self.financial_data.update(grab_financial_data_for_ticker())
+
+        _tickers_list = self.get_tickers_links()
+        for ticker in _tickers_list[:2]:
+            ticker_link = f'https://finance.yahoo.com/quote/{ticker}/financials?p={ticker}'
+            print(ticker)
+            self.driver.get(ticker_link) 
+            accept_cookie()
+            self.financial_data.update(grab_financial_data_for_ticker(ticker))
 
     def main(self):
         self.get_tickers_links()
