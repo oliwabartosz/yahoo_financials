@@ -89,8 +89,10 @@ class FinancialScraper:
         try:
             self.wait.until(EC.visibility_of_element_located((By.XPATH, expand_all_data_xpath)))
             self.driver.find_element("xpath", expand_all_data_xpath).click()
+            print("'Expand all' clicked.")
             logging.warning("'Expand all' clicked.")
         except TimeoutException as e:
+            logging.warning("The table is already expanded.")
             print("The table is already expanded.")
         return True
 
@@ -110,10 +112,11 @@ class FinancialScraper:
                 f"//span[@class='Va(m)' and text()='{financial_position}']"})
         
         def click_on_financial_statement_link(xpath:str):
+            logging.warning(f"CLICKING: {xpath}")
             print("CLICKING:", xpath)
             self.driver.find_element("xpath", xpath).click()
             self.wait.until(EC.visibility_of_element_located((By.XPATH, "(//span[@class='Va(m)'])[last()]")))
-            #time.sleep(10)
+            logging.warning(f"CLICKED: {xpath}")
             print('CLICKED:', xpath)
             return True
         
@@ -141,10 +144,12 @@ class FinancialScraper:
             try:
                 self.wait.until(EC.visibility_of_element_located((By.XPATH, cookie_button_accept_xpath)))
                 self.driver.find_element("xpath", cookie_button_accept_xpath).click()
+                print("Cookies accepted.")
                 logging.warning("Cookies accepted.")
                 return True
             except TimeoutException as e:
-                print("Cookie confirmation not needed.")
+                print("Cookies confirmation not needed.")
+                logging.warning("Cookies confirmation not needed.")
                 return False
                 
                                
@@ -203,7 +208,8 @@ class FinancialScraper:
         _tickers_list = self.get_tickers_links()
         for ticker in _tickers_list[:2]:
             ticker_link = f'https://finance.yahoo.com/quote/{ticker}/financials?p={ticker}'
-            print(ticker)
+            print(f"Downloading ticker: {ticker}")
+            logging.warning(f"Downloading ticker: {ticker}")
             self.driver.get(ticker_link) 
             accept_cookie()
             self.financial_data.append(grab_financial_data_for_ticker(ticker))
