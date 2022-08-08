@@ -4,3 +4,7 @@ tmp.py
 Xpath.pdf
 __pycache__
 *.pyc
+tickers.pkl
+financials.log
+tickers.log
+financials.pkl
