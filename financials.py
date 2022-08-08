@@ -135,12 +135,11 @@ class FinancialScraper:
         if os.path.isfile('finacials.pkl'):
             self.restore_financials_file = pickle.load(open('financials.pkl','rb'))
             self.financial_data = self.restore_financials_file
+            logging.warning("Financials data has been restored from .pkl file.")
             return True
         else:
+            logging.warning("Financials data has not been restored from .pkl file. There's no such file.")
             return False
-    
-    def check_if_exists_in_base_by_date(self):
-        pass
     
     def grab_financials_data(self):
 
@@ -156,8 +155,13 @@ class FinancialScraper:
                 print("Cookies confirmation not needed.")
                 logging.warning("Cookies confirmation not needed.")
                 return False
-                
-                               
+
+        def save_finacials_data_to_file():
+            save_pickle_financials_file = open('financials.pkl', 'wb')
+            pickle.dump(self.financial_data, save_pickle_financials_file)
+            save_pickle_financials_file.close()
+            logging.warning("Saved data to financials.pkl")
+
         def grab_financial_data_for_ticker(ticker):
             
             _financial_data = {}
@@ -167,22 +171,36 @@ class FinancialScraper:
                 how_many_columns_in_table = len(self.driver.find_elements("xpath","//div[@class='D(tbr) C($primaryColor)']/div"))
                 return how_many_columns_in_table
             
+
+            def check_if_data_has_been_downloaded_before():
+                is_financials_pkl = self.restore_finacials_data()
+
+                if is_financials_pkl == False:
+                    pass
+                else:
+                    pass
+
+            
             def grap_financial_data_for_specific_statement(range_end, ticker):
-                
+                logging.warning(f"Downloading data for: {ticker}")
+                months_and_years_list = []
+
                 for i in range(2, range_end+1, 1):
                     for key, value in xpaths_dict.items():
                         try:
                             financial_value = self.driver.find_element("xpath", f"{value}/../../../div[{i}]").text
                         except NoSuchElementException:
                             continue
+
                         date_of_statement = self.driver.find_element("xpath", f"//span[text()='Breakdown']/../../div[{i}]").text
-                    
                         if date_of_statement != "TTM":
                             month_and_year = f"{date_of_statement.split('/')[0]}_{date_of_statement.split('/')[2]}"
                         else:
                             month_and_year = "TTM"
+                        months_and_years_list.append(month_and_year)
                         
                         _financial_data.update({"Ticker":ticker})
+                        _financial_data.update({"Month_and_year_of_data":list(set(months_and_years_list))})
                         _financial_data.update({"Date_of_download":date_of_download})
                         _financial_data.update({f"{key}|{month_and_year}":financial_value})
                         
@@ -215,20 +233,14 @@ class FinancialScraper:
             self.driver.get(ticker_link) 
             accept_cookie()
             self.financial_data.append(grab_financial_data_for_ticker(ticker))
+            save_finacials_data_to_file()
     
-    def save_finacials_data_to_file(self):
-        save_pickle_financials_file = open('financials.pkl', 'wb')
-        pickle.dump(self.financial_data, save_pickle_financials_file)
-        save_pickle_financials_file.close()
-
     def quit(self):
         self.driver.quit()
 
     def main(self):
         self.restore_finacials_data()
-        self.check_if_exists_in_base_by_date()
         self.grab_financials_data()
-        self.save_finacials_data_to_file()
         self.quit()
         print(self.financial_data)
 
