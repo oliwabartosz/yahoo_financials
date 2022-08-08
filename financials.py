@@ -32,7 +32,7 @@ class FinancialScraper:
     def __init__(self, wait_time:int):
         logging.warning('Stared program financials.py')
         self.wait_time = wait_time
-        self.financial_data = {}
+        self.financial_data = []
 
         # SELENIUM SETTINGS 
         options = Options()
@@ -191,7 +191,7 @@ class FinancialScraper:
             how_many_columns = how_many_columns_in_table()
             grap_financial_data_for_specific_statement(range_end=how_many_columns, ticker=ticker)
 
-
+            # CASHFLOW
             xpaths_dict = self.generate_xpaths_for_financial_data(self.cash_flow_positions_list, 
                                                                     cash_flow=True)
             how_many_columns = how_many_columns_in_table()                                                       
@@ -206,7 +206,7 @@ class FinancialScraper:
             print(ticker)
             self.driver.get(ticker_link) 
             accept_cookie()
-            self.financial_data.update(grab_financial_data_for_ticker(ticker))
+            self.financial_data.append(grab_financial_data_for_ticker(ticker))
 
     def main(self):
         self.get_tickers_links()
