@@ -91,8 +91,7 @@ class TickerScraper():
             append_ticker_if_doesnt_exists_in_gathered_data(ticker=ticker, 
                                                             list_of_downloaded_tickers=self.gathered_tickers_list, 
                                                             i=i)
-            
-        ## logging.warning(f'Gathered {(self.gathered_tickers_list)} tickers so far.' )
+        
         logging.warning(f"{'='*10}\nGathered {len(self.gathered_tickers_list)} tickers so far.")
 
     def save_tickers_data(self):

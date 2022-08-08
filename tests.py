@@ -1,6 +1,27 @@
 import unittest
 from financials import FinancialScraper
-from main import *
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import StaleElementReferenceException
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+from concurrent.futures import ThreadPoolExecutor
+from selenium.common.exceptions import TimeoutException
+from time import sleep
+import pickle
+import os
+import pandas as pd
+import requests
+import re
+import datetime
+import shutil
+import glob
+import time
 
 
 class TestTickersScraper(unittest.TestCase):

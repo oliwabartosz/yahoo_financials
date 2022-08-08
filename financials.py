@@ -81,9 +81,6 @@ class FinancialScraper:
             logging.warning("No tickers.pkl file.")
             return _tickers
 
-    def transform_tickers_links_to_financial_statments_links(self):
-        pass
-
     def expand_all_data_in_tables(self):
         expand_all_data_xpath ="//*[starts-with(text(),'Expand All')]"
         try:
@@ -134,6 +131,14 @@ class FinancialScraper:
 
         return positions_with_xpath_dict
    
+    def restore_finacials_data(self):
+        if os.path.isfile('finacials.pkl'):
+            self.restore_financials_file = pickle.load(open('financials.pkl','rb'))
+            self.financial_data = self.restore_financials_file
+            return True
+        else:
+            return False
+    
     def check_if_exists_in_base_by_date(self):
         pass
     
@@ -162,7 +167,6 @@ class FinancialScraper:
                 how_many_columns_in_table = len(self.driver.find_elements("xpath","//div[@class='D(tbr) C($primaryColor)']/div"))
                 return how_many_columns_in_table
             
-
             def grap_financial_data_for_specific_statement(range_end, ticker):
                 
                 for i in range(2, range_end+1, 1):
@@ -180,7 +184,6 @@ class FinancialScraper:
                         
                         _financial_data.update({"Ticker":ticker})
                         _financial_data.update({"Date_of_download":date_of_download})
-                        _financial_data.update({"Date_of_statment":date_of_statement})
                         _financial_data.update({f"{key}|{month_and_year}":financial_value})
                         
 
@@ -204,7 +207,6 @@ class FinancialScraper:
             
             return _financial_data
 
-
         _tickers_list = self.get_tickers_links()
         for ticker in _tickers_list[:2]:
             ticker_link = f'https://finance.yahoo.com/quote/{ticker}/financials?p={ticker}'
@@ -213,11 +215,21 @@ class FinancialScraper:
             self.driver.get(ticker_link) 
             accept_cookie()
             self.financial_data.append(grab_financial_data_for_ticker(ticker))
+    
+    def save_finacials_data_to_file(self):
+        save_pickle_financials_file = open('financials.pkl', 'wb')
+        pickle.dump(self.financial_data, save_pickle_financials_file)
+        save_pickle_financials_file.close()
+
+    def quit(self):
+        self.driver.quit()
 
     def main(self):
-        self.get_tickers_links()
+        self.restore_finacials_data()
         self.check_if_exists_in_base_by_date()
         self.grab_financials_data()
+        self.save_finacials_data_to_file()
+        self.quit()
         print(self.financial_data)
 
 grab_data = FinancialScraper(wait_time=5)
