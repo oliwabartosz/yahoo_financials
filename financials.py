@@ -32,11 +32,11 @@ class FinancialScraper:
     def __init__(self, wait_time:int):
         logging.warning('Stared program financials.py')
         self.wait_time = wait_time
-        self.financial_data = []
+        
 
         # SELENIUM SETTINGS 
         options = Options()
-        #options.add_argument("--headless")
+        options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_experimental_option("detach", True)
@@ -45,6 +45,7 @@ class FinancialScraper:
         self.driver = webdriver.Chrome(options=options)
         self.wait = WebDriverWait(self.driver, wait_time)
 
+        self.financial_data = []
         self.income_statement_positions_list = [
                                             'Total Revenue', 
                                             'Diluted EPS',
@@ -81,17 +82,7 @@ class FinancialScraper:
             logging.warning("No tickers.pkl file.")
             return _tickers
 
-    def expand_all_data_in_tables(self):
-        expand_all_data_xpath ="//*[starts-with(text(),'Expand All')]"
-        try:
-            self.wait.until(EC.visibility_of_element_located((By.XPATH, expand_all_data_xpath)))
-            self.driver.find_element("xpath", expand_all_data_xpath).click()
-            print("'Expand all' clicked.")
-            logging.warning("'Expand all' clicked.")
-        except TimeoutException as e:
-            logging.warning("The table is already expanded.")
-            print("The table is already expanded.")
-        return True
+
 
     def generate_xpaths_for_financial_data(self, list_with_finacial_positions_to_generate:list, 
                                             income_statement:bool=False,
@@ -102,6 +93,18 @@ class FinancialScraper:
         income_statement_xpath = "//a//span[text()='Income Statement']"
         balance_sheet_xpath = "//a//span[text()='Balance Sheet']"
         cash_flow_xpath = "//a//span[text()='Cash Flow']"
+
+        def expand_all_data_in_tables(self):
+            expand_all_data_xpath ="//*[starts-with(text(),'Expand All')]"
+            try:
+                self.wait.until(EC.visibility_of_element_located((By.XPATH, expand_all_data_xpath)))
+                self.driver.find_element("xpath", expand_all_data_xpath).click()
+                print("'Expand all' clicked.")
+                logging.warning("'Expand all' clicked.")
+            except TimeoutException as e:
+                logging.warning("The table is already expanded.")
+                print("The table is already expanded.")
+            return True
 
         def xpath_generator():
             for financial_position in list_with_finacial_positions_to_generate:
@@ -118,11 +121,11 @@ class FinancialScraper:
             return True
         
         if income_statement == True:
-            self.expand_all_data_in_tables()
+            expand_all_data_in_tables()
             xpath_generator()
         elif balance_sheet == True:
             click_on_financial_statement_link(balance_sheet_xpath)
-            self.expand_all_data_in_tables()
+            expand_all_data_in_tables()
             xpath_generator()
         elif cash_flow == True:
             click_on_financial_statement_link(cash_flow_xpath)
@@ -132,7 +135,7 @@ class FinancialScraper:
         return positions_with_xpath_dict
    
     def restore_finacials_data(self):
-        if os.path.isfile('finacials.pkl'):
+        if os.path.isfile('financials.pkl'):
             self.restore_financials_file = pickle.load(open('financials.pkl','rb'))
             self.financial_data = self.restore_financials_file
             logging.warning("Financials data has been restored from .pkl file.")
@@ -140,27 +143,58 @@ class FinancialScraper:
         else:
             logging.warning("Financials data has not been restored from .pkl file. There's no such file.")
             return False
+
+    def accept_cookie(self):
+        cookie_button_accept_xpath = "//button[@class='btn primary']"
+        try:
+            self.wait.until(EC.visibility_of_element_located((By.XPATH, cookie_button_accept_xpath)))
+            self.driver.find_element("xpath", cookie_button_accept_xpath).click()
+            print("Cookies accepted.")
+            logging.warning("Cookies accepted.")
+            return True
+        except TimeoutException as e:
+            print("Cookies confirmation not needed.")
+            logging.warning("Cookies confirmation not needed.")
+            return False
     
     def grab_financials_data(self):
-
-        def accept_cookie():
-            cookie_button_accept_xpath = "//button[@class='btn primary']"
-            try:
-                self.wait.until(EC.visibility_of_element_located((By.XPATH, cookie_button_accept_xpath)))
-                self.driver.find_element("xpath", cookie_button_accept_xpath).click()
-                print("Cookies accepted.")
-                logging.warning("Cookies accepted.")
-                return True
-            except TimeoutException as e:
-                print("Cookies confirmation not needed.")
-                logging.warning("Cookies confirmation not needed.")
-                return False
 
         def save_finacials_data_to_file():
             save_pickle_financials_file = open('financials.pkl', 'wb')
             pickle.dump(self.financial_data, save_pickle_financials_file)
             save_pickle_financials_file.close()
             logging.warning("Saved data to financials.pkl")
+            
+        def check_if_data_has_been_downloaded_before(ticker_to_check):
+
+            def check_date() -> str:
+                last_date_xpath = "//span[text()='Breakdown']/../../div[3]"
+
+                print('Checking the last date')
+                logging.warning(f'Checking the last date')
+                self.driver.get(f'https://finance.yahoo.com/quote/{ticker_to_check}/financials?p={ticker_to_check}')
+                self.accept_cookie()
+                self.wait.until(EC.visibility_of_element_located((By.XPATH, last_date_xpath)))
+                last_date = self.driver.find_element("xpath", last_date_xpath).text
+                last_date = f"{last_date.split('/')[0]}_{last_date.split('/')[2]}"
+                print(f'Last date check: {last_date}')
+                logging.warning(f'Last date check:{last_date}')
+                return last_date
+
+            is_financials_pkl = self.restore_finacials_data()
+            if is_financials_pkl == False:
+                pass
+            else:
+                filtered_list = list(filter(lambda d: d['Ticker'] == ticker_to_check, self.financial_data))
+                if not filtered_list:
+                    print(f'{ticker_to_check}: Item does not exists')
+                    logging.warning(f'{ticker_to_check}: Item does not exists')
+                    return False
+                else:
+                    last_date = check_date()
+                    if last_date in  filtered_list[0]["Month_and_year_of_data"]:
+                        print("There is a data point for last statement's date")
+                        return True
 
         def grab_financial_data_for_ticker(ticker):
             
@@ -170,17 +204,7 @@ class FinancialScraper:
             def how_many_columns_in_table():
                 how_many_columns_in_table = len(self.driver.find_elements("xpath","//div[@class='D(tbr) C($primaryColor)']/div"))
                 return how_many_columns_in_table
-            
-
-            def check_if_data_has_been_downloaded_before():
-                is_financials_pkl = self.restore_finacials_data()
-
-                if is_financials_pkl == False:
-                    pass
-                else:
-                    pass
-
-            
+                        
             def grap_financial_data_for_specific_statement(range_end, ticker):
                 logging.warning(f"Downloading data for: {ticker}")
                 months_and_years_list = []
@@ -227,13 +251,20 @@ class FinancialScraper:
 
         _tickers_list = self.get_tickers_links()
         for ticker in _tickers_list[:2]:
-            ticker_link = f'https://finance.yahoo.com/quote/{ticker}/financials?p={ticker}'
-            print(f"Downloading ticker: {ticker}")
-            logging.warning(f"Downloading ticker: {ticker}")
-            self.driver.get(ticker_link) 
-            accept_cookie()
-            self.financial_data.append(grab_financial_data_for_ticker(ticker))
-            save_finacials_data_to_file()
+            check_if_data_exists = check_if_data_has_been_downloaded_before(ticker_to_check=ticker)
+            print(check_if_data_exists)
+            if not check_if_data_exists:
+                ticker_link = f'https://finance.yahoo.com/quote/{ticker}/financials?p={ticker}'
+                print(f"Downloading ticker: {ticker}")
+                logging.warning(f"Downloading ticker: {ticker}")
+                self.driver.get(ticker_link) 
+                self.accept_cookie()
+                self.financial_data.append(grab_financial_data_for_ticker(ticker))
+                save_finacials_data_to_file()
+            else:
+                print(f'Skipping {ticker}.')
+                logging.warning(f'Skipping {ticker}.')
+                continue
     
     def quit(self):
         self.driver.quit()
