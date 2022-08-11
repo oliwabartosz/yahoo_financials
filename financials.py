@@ -209,16 +209,20 @@ class FinancialScraper:
             if is_financials_pkl == False:
                 pass
             else:
-                filtered_list = list(filter(lambda d: d['Ticker'] == ticker_to_check, self.financial_data))
-                if not filtered_list:
-                    print(f'{ticker_to_check}: Item does not exists')
-                    logging.warning(f'{ticker_to_check}: Item does not exists')
+                try:
+                    filtered_list = list(filter(lambda d: d['Ticker'] == ticker_to_check, self.financial_data))
+                    if not filtered_list:
+                        print(f'{ticker_to_check}: Item does not exists')
+                        logging.warning(f'{ticker_to_check}: Item does not exists')
+                        return False
+                    else:
+                        last_date = check_date()
+                        if last_date in filtered_list[0]["Month_and_year_of_data"]:
+                            print("There is a data point for last statement's date")
+                            return True
+                except KeyError:
                     return False
-                else:
-                    last_date = check_date()
-                    if last_date in  filtered_list[0]["Month_and_year_of_data"]:
-                        print("There is a data point for last statement's date")
-                        return True
+                
 
         def get_financial_data_for_ticker(ticker) -> dict:
             
@@ -234,24 +238,29 @@ class FinancialScraper:
                 months_and_years_list = []
 
                 for i in range(2, range_end+1, 1):
-                    for key, value in xpaths_dict.items():
-                        try:
-                            financial_value = self.driver.find_element("xpath", f"{value}/../../../div[{i}]").text
-                        except NoSuchElementException:
-                            logging.warning(f"{key} / Error: NoSuchElementException, line: 237")
-                            continue
-
-                        date_of_statement = self.driver.find_element("xpath", f"//span[text()='Breakdown']/../../div[{i}]").text
-                        if date_of_statement != "TTM":
-                            month_and_year = f"{date_of_statement.split('/')[0]}_{date_of_statement.split('/')[2]}"
-                        else:
-                            month_and_year = "TTM"
-                        months_and_years_list.append(month_and_year)
-                        
+                    ## range_end == 2 means that the table is empty.
+                    if range_end == 2:
                         _financial_data.update({"Ticker":ticker})
-                        _financial_data.update({"Month_and_year_of_data":list(set(months_and_years_list))})
                         _financial_data.update({"Date_of_download":date_of_download})
-                        _financial_data.update({f"{key}|{month_and_year}":financial_value})
+                    else:
+                        for key, value in xpaths_dict.items():
+                            try:
+                                financial_value = self.driver.find_element("xpath", f"{value}/../../../div[{i}]").text
+                            except NoSuchElementException:
+                                logging.warning(f"{key} / Error: NoSuchElementException, line: 237")
+                                continue
+
+                            date_of_statement = self.driver.find_element("xpath", f"//span[text()='Breakdown']/../../div[{i}]").text
+                            if date_of_statement != "TTM":
+                                month_and_year = f"{date_of_statement.split('/')[0]}_{date_of_statement.split('/')[2]}"
+                            else:
+                                month_and_year = "TTM"
+                            months_and_years_list.append(month_and_year)
+                            
+                            _financial_data.update({"Ticker":ticker})
+                            _financial_data.update({"Month_and_year_of_data":list(set(months_and_years_list))})
+                            _financial_data.update({"Date_of_download":date_of_download})
+                            _financial_data.update({f"{key}|{month_and_year}":financial_value})
                         
 
             # INCOME STATEMENT
@@ -275,7 +284,7 @@ class FinancialScraper:
             return _financial_data
 
         _tickers_list = self.get_tickers_links_and_covert_to_tickers()
-        for ticker in _tickers_list:
+        for ticker in _tickers_list[299:]:
             check_if_data_exists = check_if_data_has_been_downloaded_before(ticker_to_check=ticker)
             if not check_if_data_exists:
                 print(f"Downloading ticker: {ticker}")
