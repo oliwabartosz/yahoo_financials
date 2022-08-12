@@ -1,2 +1,2 @@
-# youtube_financials
+# yahoo_financials
 Financial Data from Yahoo
