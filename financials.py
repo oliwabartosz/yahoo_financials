@@ -250,6 +250,18 @@ class FinancialScraper:
             def how_many_columns_in_table() -> int:
                 how_many_columns_in_table = len(self.driver.find_elements("xpath","//div[@class='D(tbr) C($primaryColor)']/div"))
                 return how_many_columns_in_table
+
+            def get_currency() -> str:
+                try: 
+                    currency_xpath = "//span/span[contains(text(), 'Currency in')]"
+                    currency = self.driver.find_element("xpath", currency_xpath).text
+                    currency = currency.split('.')[0].rsplit()[-1]
+                except NoSuchElementException:
+                    currency = 'USD'
+                
+                return currency
+
+
                         
             def get_financial_data_for_specific_statement(range_end, ticker):
                 logger.warning(f"Downloading data for: {ticker}")
@@ -265,7 +277,7 @@ class FinancialScraper:
                             try:
                                 financial_value = self.driver.find_element("xpath", f"{value}/../../../div[{i}]").text
                             except NoSuchElementException:
-                                logger.warning(f"{key} / Error: NoSuchElementException, line: 237")
+                                logger.warning(f"{key} / Error: NoSuchElementException")
                                 continue
 
                             date_of_statement = self.driver.find_element("xpath", f"//span[text()='Breakdown']/../../div[{i}]").text
@@ -274,10 +286,13 @@ class FinancialScraper:
                             else:
                                 month_and_year = "TTM"
                             months_and_years_list.append(month_and_year)
+
+                            currency = get_currency()
                             
                             _financial_data.update({"Ticker":ticker})
                             _financial_data.update({"Month_and_year_of_data":list(set(months_and_years_list))})
                             _financial_data.update({"Date_of_download":date_of_download})
+                            _financial_data.update({"Currency": currency})
                             _financial_data.update({f"{key}|{month_and_year}":financial_value})
                         
 
@@ -302,7 +317,7 @@ class FinancialScraper:
             return _financial_data
 
         _tickers_list = self.get_tickers_links_and_covert_to_tickers()
-        for ticker in _tickers_list[299:]:
+        for ticker in _tickers_list[207:208]:
             check_if_data_exists = check_if_data_has_been_downloaded_before(ticker_to_check=ticker)
             if (not check_if_data_exists) or (check_if_data_exists != KeyError):
                 logger.warning(f"Downloading ticker: {ticker}")
