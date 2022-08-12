@@ -36,6 +36,7 @@ logging.getLogger().addHandler(console)
 logger = logging.getLogger('financials.area1')
 
 class FinancialScraper:
+    """Scraper of financial data from income statement, balance sheet and cashflow"""
 
     def __init__(self, wait_time:int, check_data_by_date:bool=True):
         """
