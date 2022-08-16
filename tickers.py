@@ -13,13 +13,6 @@ from selenium.common.exceptions import TimeoutException
 from time import sleep
 import pickle
 import os
-import pandas as pd
-import requests
-import re
-import datetime
-import shutil
-import glob
-import time
 import logging
 
 logging.basicConfig(filename='tickers.log', filemode='w', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')

@@ -1,4 +1,3 @@
-from tabnanny import check
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException
@@ -14,13 +13,7 @@ from selenium.common.exceptions import TimeoutException
 from time import sleep
 import pickle
 import os
-import pandas as pd
-import requests
 import re
-import datetime
-import shutil
-import glob
-import time
 import logging
 
 from datetime import date
