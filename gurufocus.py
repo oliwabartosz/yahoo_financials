@@ -38,7 +38,7 @@ class DividendScraper:
 
         # SELENIUM SETTINGS 
         options = Options()
-        #options.add_argument("--headless")
+        options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_experimental_option("detach", True)
@@ -81,7 +81,6 @@ class DividendScraper:
         tickers_exceptions = {
             'BRK-A':'NEOE:BRK',
             'BRK-B':'NEOE:BRK',
-
         }
 
         tickers_to_adjust = self.get_tickers_links_and_covert_to_tickers()
@@ -95,6 +94,12 @@ class DividendScraper:
                 adjusted_tickers_dict.update({ticker:ticker_adjusted})
                 adjusted_tickers_dict.update(tickers_exceptions)
             logger.warning("Dictionary with adjusted tickers to gurufocus has been generated.")
+            
+            # Removing duplicates in values
+            temporary_dict = {val:key for key, val in adjusted_tickers_dict.items()}
+            duplicates_removed_dict = {val:key for key, val in temporary_dict.items()}
+            adjusted_tickers_dict.update(duplicates_removed_dict)
+
             return adjusted_tickers_dict
 
     def download_dividend_data_from_given_ticker(self, ticker:str):
@@ -135,19 +140,18 @@ class DividendScraper:
         def how_many_pages() -> int:
             """
             This function looks for how many pages are available on GuruFocus' dividend website's table.
+            It can return False to skip downloading specific ticker, especially when it doesn't exists.
         
-            :return: a number of how many pages are in the table.
+            :return: a number of how many pages are in the table or False when TimeoutException occurs.
             """
-            time.sleep(2)
             how_many_pages_xpath = "//div[@class='aio-tabs-item right-float']"
             try:
-                self.wait.until(EC.visibility_of_element_located((By.XPATH, "//a[@class='fs-regular fw-bolder color-primary-color']")))
+                self.wait.until(EC.visibility_of_element_located((By.XPATH, "//span[@class='t-label' and text()='/100']")))
             except TimeoutException:
                 logger.warning(f"Error: TimeoutException. Returning None")
                 return None
             how_many_pages_str = self.driver.find_element("xpath", how_many_pages_xpath).text
             logger.warning(f"how_many_pages_int as string returned: {how_many_pages_str}")
-            print(len(how_many_pages_str))
             how_many_pages_int = int(how_many_pages_str.split()[1])
             if how_many_pages_int % 10 == 0:
                 how_many_pages_int = how_many_pages_int // 10
@@ -160,13 +164,14 @@ class DividendScraper:
             logger.warning(f"how_many_pages_int: {how_many_pages_int}")
             return how_many_pages_int
 
-        def next_page_click():
+        def next_page_click(i:int):
             """
             It clicks the next page in table with dividends.
             """
             next_page_xpath = "//i[@class='el-icon el-icon-arrow-right']"
             self.wait.until(EC.visibility_of_element_located((By.XPATH, next_page_xpath)))
             self.driver.find_element("xpath", next_page_xpath).click()
+            logger.warning(f'Next page clicked (page no. {i+1})')
             
         go_to_the_site()
         if not check_if_stock_pays_dividend():
@@ -174,17 +179,17 @@ class DividendScraper:
             if how_many_pages_on_site != None:
                 xpaths_data = xpath_generator()
 
-                if how_many_pages_on_site > 1:
+                if how_many_pages_on_site == 1:
                     _dividend_data.update({'Ticker':ticker})
                     for xpath_name, data in xpaths_data.items():
                         _dividend_data.update({xpath_name:self.driver.find_element("xpath", data).text})
                     return _dividend_data
                 else:
                     _dividend_data.update({'Ticker':ticker})
-                    for i in range(start=1, stop=how_many_pages_on_site, step=1):
+                    for i in range(1, how_many_pages_on_site+1, 1):
                         for xpath_name, data in xpaths_data.items():
                             _dividend_data.update({xpath_name:self.driver.find_element("xpath", data).text})
-                        next_page_click()
+                        next_page_click(i)
                     return _dividend_data
             else:
                 return False
