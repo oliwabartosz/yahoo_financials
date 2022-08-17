@@ -15,6 +15,7 @@ from time import sleep
 import pickle
 import os
 import re
+import time
 
 import logging
 
@@ -33,7 +34,6 @@ class DividendScraper:
     def __init__(self, wait_time:int):
         logger.warning(f'Stared program gurufocus.py')
         self.wait_time = wait_time
-
         self.dividend_data = []
 
         # SELENIUM SETTINGS 
@@ -87,6 +87,7 @@ class DividendScraper:
         tickers_to_adjust = self.get_tickers_links_and_covert_to_tickers()
         if not tickers_to_adjust:
             logger.warning(f"List with tickers is empty! Exiting.")
+            self.quit()
             exit(1)
         else:
             for ticker in tickers_to_adjust:
@@ -137,15 +138,24 @@ class DividendScraper:
         
             :return: a number of how many pages are in the table.
             """
+            time.sleep(2)
             how_many_pages_xpath = "//div[@class='aio-tabs-item right-float']"
-            self.wait.until(EC.visibility_of_element_located((By.XPATH, how_many_pages_xpath)))
+            try:
+                self.wait.until(EC.visibility_of_element_located((By.XPATH, "//a[@class='fs-regular fw-bolder color-primary-color']")))
+            except TimeoutException:
+                logger.warning(f"Error: TimeoutException. Returning None")
+                return None
             how_many_pages_str = self.driver.find_element("xpath", how_many_pages_xpath).text
             logger.warning(f"how_many_pages_int as string returned: {how_many_pages_str}")
-            how_many_pages_int = int(how_many_pages_str.split()[1]) // 10
-            #xpath //span[matches(.,'[0-9]')]
-            # https://tanzu.vmware.com/content/blog/xpath-css-class-matching
-            if how_many_pages == 0:
-                how_many_pages = 1
+            print(len(how_many_pages_str))
+            how_many_pages_int = int(how_many_pages_str.split()[1])
+            if how_many_pages_int % 10 == 0:
+                how_many_pages_int = how_many_pages_int // 10
+            else:
+                how_many_pages_int = (how_many_pages_int // 10) + 1
+
+            if how_many_pages_int == 0:
+                how_many_pages_int = 1
 
             logger.warning(f"how_many_pages_int: {how_many_pages_int}")
             return how_many_pages_int
@@ -161,20 +171,23 @@ class DividendScraper:
         go_to_the_site()
         if not check_if_stock_pays_dividend():
             how_many_pages_on_site = how_many_pages()
-            xpaths_data = xpath_generator()
+            if how_many_pages_on_site != None:
+                xpaths_data = xpath_generator()
 
-            if how_many_pages_on_site > 1:
-                _dividend_data.update({'Ticker':ticker})
-                for xpath_name, data in xpaths_data.items():
-                    _dividend_data.update({xpath_name:self.driver.find_element("xpath", data).text})
-                return _dividend_data
-            else:
-                _dividend_data.update({'Ticker':ticker})
-                for i in range(start=1, stop=how_many_pages_on_site, step=1):
+                if how_many_pages_on_site > 1:
+                    _dividend_data.update({'Ticker':ticker})
                     for xpath_name, data in xpaths_data.items():
                         _dividend_data.update({xpath_name:self.driver.find_element("xpath", data).text})
-                    next_page_click()
-                return _dividend_data
+                    return _dividend_data
+                else:
+                    _dividend_data.update({'Ticker':ticker})
+                    for i in range(start=1, stop=how_many_pages_on_site, step=1):
+                        for xpath_name, data in xpaths_data.items():
+                            _dividend_data.update({xpath_name:self.driver.find_element("xpath", data).text})
+                        next_page_click()
+                    return _dividend_data
+            else:
+                return False
         else: 
             return False
 

@@ -3,10 +3,5 @@ Dividend-Elite-Poland-Premium.xlsx
 tmp.py
 Xpath.pdf
 __pycache__
-*.pyc
-tickers.pkl
-financials.log
-tickers.log
-financials.pkl
-gurufocus.log
-gurufocus.pkl
+*.pkl
+*.log
