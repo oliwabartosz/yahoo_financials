@@ -188,25 +188,33 @@ class DividendScraper:
             logger.warning(f"Found {how_many_elements_in_table} rows in a table to download.")
             return how_many_elements_in_table
 
-        def get_elements_from_one_page_from_table() -> dict:
+        def get_elements_from_one_page_from_table() -> list:
             """
             It downloads the data from the table of one page.
             :return: a dictionary with data from one page of the table
             """
             one_table_data_list = []
-            one_table_data_dict = {}
-
-            how_many_rows_in_table = check_how_many_elements_in_table(xpaths_data['Reported Dividend'])
-            counter = 0
-            for row in range(1,how_many_rows_in_table+1,1):
-                for xpath_name, data in xpaths_data.items():
-                    xpath_with_row = f"{data}[{row}]"
-                    one_table_data_dict.update({'Ticker':ticker+"_"+str(row),
-                                                xpath_name:self.driver.find_element("xpath", xpath_with_row).text,
-                                                "id":row,
-                                                })
             
-            return one_table_data_dict
+            how_many_rows_in_table = check_how_many_elements_in_table(xpaths_data['Reported Dividend'])
+            for row in range(1,how_many_rows_in_table+1,1):
+                one_table_data_dict = {}
+                one_table_data_dict.update({'Ticker':ticker,
+                                            'Reported Dividend':f"//table[@class='data-table normal-table']//descendant::*[@data-column='Reported Dividend'][1]",
+                                            'Ex-Date':f"//table[@class='data-table normal-table']//descendant::*[@data-column='Ex-Date'][1]",
+                                            })
+                one_table_data_list.append(one_table_data_dict)                   
+                                            
+                
+                # for xpath_name, xpath in xpaths_data.items():
+                #     xpath_with_row = f"{xpath}[{row}]"
+                #     one_table_data_dict = {}
+                #     one_table_data_dict.update({'Ticker':ticker,
+                #                                 xpath_name:self.driver.find_element("xpath", xpath_with_row).text,
+                #                                 "id":row,
+                #                                 })
+                #     one_table_data_list.append(one_table_data_dict)
+            
+            return one_table_data_list
 
         xpaths_data = xpath_generator()
         go_to_the_site()
@@ -296,7 +304,8 @@ class DividendScraper:
         """
         self.restore_dividends_data()
         tickers = self.adjust_tickers_from_yahoo_to_gurufocus()
-        for ticker in tickers.values():
+        # temp
+        for ticker in list(tickers.values())[2:3]:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
             downloaded_data_dict = self.download_dividend_data_from_given_ticker(ticker=ticker)
             if downloaded_data_dict == False:
                 continue
