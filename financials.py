@@ -222,7 +222,7 @@ class FinancialScraper:
             """
             Saves data from every iteration to pickle file.
 
-            :return: it saves the list of dictionaries in __init_ method - a main output - into pickle file.
+            :return: it saves the list of dictionaries in __init__ method - a main output - into pickle file.
             """
             save_pickle_financials_file = open('financials.pkl', 'wb')
             pickle.dump(self.financial_data, save_pickle_financials_file)

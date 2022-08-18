@@ -195,6 +195,31 @@ class DividendScraper:
                 return False
         else: 
             return False
+    
+    def save_dividend_data_to_file() -> pickle:
+        """
+        Saves data from every iteration to pickle file.
+
+        :return: it saves the list of dictionaries in __init__ method - a main output - into pickle file.
+        """
+        save_pickle_dividends_file = open('dividends.pkl', 'wb')
+        pickle.dump(self.financial_data, save_pickle_dividends_file)
+        save_pickle_dividends_file.close()
+        logger.warning("Saved data to dividends.pkl")
+
+    def restore_dividends_data(self):
+        """
+        It checks if there is a pickle file, where previous data are held. If so,
+        it upgrades the main list of dictionaries (which at the end is an output).
+        """ 
+        if os.path.isfile('dividends.pkl'):
+            self.restore_dividends_file = pickle.load(open('dividends.pkl','rb'))
+            self.dividend_data = self.restore_dividends_file
+            logger.warning("Dividends data has been restored from .pkl file.")
+            return True
+        else:
+            logger.warning("Dividends data has not been restored from .pkl file. There's no such file.")
+            return False
 
     def quit(self):
         """
@@ -206,6 +231,7 @@ class DividendScraper:
         """
         A core function. It updates main dictionary with data (output)
         """
+        self.restore_dividends_data()
         tickers = self.adjust_tickers_from_yahoo_to_gurufocus()
         for ticker in tickers.values():
             downloaded_data_dict = self.download_dividend_data_from_given_ticker(ticker=ticker)
@@ -213,6 +239,7 @@ class DividendScraper:
                 continue
             else:
                 self.dividend_data.append(downloaded_data_dict)
+                self.save_dividend_data_to_file()
                 print(self.dividend_data)
         self.quit()
 
