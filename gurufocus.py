@@ -183,15 +183,29 @@ class DividendScraper:
             logger.warning(f"Found {how_many_elements_in_table} rows in a table to download.")
             return how_many_elements_in_table
 
-        def check_last_Ex_Date() -> bool:
+        def check_last_Ex_Date(ticker_to_check:str) -> bool:
+            """
+            It take the Ex-Date value for first row in data table on the website for specific ticker, 
+            and compares it with the previously downloaded data.py
+
+            :return: True, if the Ex-Date for Ticker has been found, otherwise False (empty list).
+            """
 
             xpaths_data = xpath_generator()
             ex_date_xpath = xpaths_data['Ex-Date']
             last_ex_date = self.driver.find_element("xpath",ex_date_xpath).text
-            print(last_ex_date)
 
-            # if ex_date in base - return true else return false
-            return True
+            filtered_list = list(filter(lambda d: (d['Ticker'] == ticker_to_check) & (d['Ex-Date'] == last_date), dividends_data))
+            if not filtered_list:
+                logger.warning(f'{ticker_to_check}: No data found. Downloading data for.')
+                return False
+            else:
+                if last_ex_date in filtered_list[0]["Ex-Date"]:
+                    logger.warning(f"{ticker_to_check}: Data is up to date. Skipping that ticker.")
+                    return True
+                logger.warning('check_last_Ex_Date: Something went wrong. Returned None')
+
+            print(last_ex_date)
 
         def get_elements_from_one_page_from_table(page_no:int) -> list:
             """
@@ -279,7 +293,7 @@ class DividendScraper:
             if downloaded_data_list == False:
                 continue
             else:
-                self.dividend_data.append(downloaded_data_list)
+                self.dividend_data = downloaded_data_list
                 self.save_dividend_data_to_file()
                 print(self.dividend_data)
         self.quit()
