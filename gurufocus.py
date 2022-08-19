@@ -46,7 +46,7 @@ class DividendScraper:
         self.driver = webdriver.Chrome(options=options)
         self.wait = WebDriverWait(self.driver, wait_time)
 
-    def get_tickers_links_and_covert_to_tickers(self) -> list:
+    def get_tickers_links_and_convert_to_tickers(self) -> list:
         """
         It converts links for tickers downloaded by using tickers.py
         into tickers:
@@ -82,7 +82,7 @@ class DividendScraper:
             'BRK-B':'NEOE:BRK',
         }
 
-        tickers_to_adjust = self.get_tickers_links_and_covert_to_tickers()
+        tickers_to_adjust = self.get_tickers_links_and_convert_to_tickers()
         if not tickers_to_adjust:
             logger.warning(f"List with tickers is empty! Exiting.")
             self.quit()
@@ -190,12 +190,13 @@ class DividendScraper:
 
             :return: True, if the Ex-Date for Ticker has been found, otherwise False (empty list).
             """
-
             xpaths_data = xpath_generator()
             ex_date_xpath = xpaths_data['Ex-Date']
             last_ex_date = self.driver.find_element("xpath",ex_date_xpath).text
-
-            filtered_list = list(filter(lambda d: (d['Ticker'] == ticker_to_check) & (d['Ex-Date'] == last_date), dividends_data))
+            try:
+                filtered_list = list(filter(lambda d: (d['Ticker'] == ticker_to_check) & (d['Ex-Date'] == last_ex_date), self.dividend_data))
+            except TypeError:
+                return False
             if not filtered_list:
                 logger.warning(f'{ticker_to_check}: No data found. Downloading data for.')
                 return False
@@ -204,8 +205,6 @@ class DividendScraper:
                     logger.warning(f"{ticker_to_check}: Data is up to date. Skipping that ticker.")
                     return True
                 logger.warning('check_last_Ex_Date: Something went wrong. Returned None')
-
-            print(last_ex_date)
 
         def get_elements_from_one_page_from_table(page_no:int) -> list:
             """
@@ -235,7 +234,10 @@ class DividendScraper:
         go_to_the_site()
         if not check_if_stock_pays_dividend():
             how_many_pages_on_site = how_many_pages()
+            check_if_data_exists = check_last_Ex_Date(ticker_to_check=ticker)
             if how_many_pages_on_site == None:
+                return False
+            elif check_if_data_exists == True or None:
                 return False
             else:
                 if how_many_pages_on_site == 1:
@@ -244,7 +246,6 @@ class DividendScraper:
                     return dividend_data_for_one_ticker
                 else:
                     for page in range(1, how_many_pages_on_site+1, 1):
-                        check_last_Ex_Date()
                         one_table_data_dict = get_elements_from_one_page_from_table(page_no=page)
                         dividend_data_for_one_ticker.extend(one_table_data_dict)
                         next_page_click(page)
@@ -288,15 +289,21 @@ class DividendScraper:
         self.restore_dividends_data()
         tickers = self.adjust_tickers_from_yahoo_to_gurufocus()
         # for ticker in list(tickers.values())[0:4]:    
-        for ticker in tickers.values():                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+        for ticker in tickers.values():                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
             downloaded_data_list = self.download_dividend_data_from_given_ticker(ticker=ticker)
             if downloaded_data_list == False:
                 continue
             else:
-                self.dividend_data = downloaded_data_list
+                try:
+                    self.dividend_data.extend(downloaded_data_list)
+                except TypeError:
+                    # if there is no data for a ticker, it returns empty list (NoneType)
+                    pass
                 self.save_dividend_data_to_file()
                 print(self.dividend_data)
         self.quit()
+
+# https://www.gurufocus.com/stock/BML/dividend -> ERROR
 
 get_data = DividendScraper(wait_time=5)
 get_data.main()
