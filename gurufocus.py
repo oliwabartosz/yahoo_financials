@@ -11,11 +11,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from concurrent.futures import ThreadPoolExecutor
 from selenium.common.exceptions import TimeoutException
-from time import sleep
 import pickle
 import os
 import re
-import time
 
 import logging
 
@@ -103,22 +101,20 @@ class DividendScraper:
 
             return adjusted_tickers_dict
 
-    def download_dividend_data_from_given_ticker(self, ticker:str) -> dict:
+    def download_dividend_data_from_given_ticker(self, ticker:str) -> list:
         """
         Downloads the data about dividends for specific ticker.
 
-        :return: it returns dictionary with data for specific ticker. If error occurs it returns False.
+        :return: it returns a list with data for specific ticker. If error occurs it returns False.
         """
         self.ticker = ticker
-        _dividend_data = {}
+        dividend_data_for_one_ticker = []
         
         def xpath_generator() -> dict:
             """It generates a dict of xpaths for downloading the data."""
-            xpaths_to_download = ['Reported Dividend','Ex-Date','Record Date','Pay Date','Type','Frequency']
+            xpaths_to_download = ['Reported Currency','Reported Dividend','Ex-Date','Record Date','Pay Date','Type','Frequency']
             xpath_to_download_dict = {xpath_name:f"//table[@class='data-table normal-table']//descendant::*[@data-column='{xpath_name}']" 
                                       for xpath_name in xpaths_to_download}
-            # f"//table[@class='data-table normal-table']//tr/td[@data-column='{xpath_name}']"
-            # //table[@class='data-table normal-table']//descendant::*[@data-column='Reported Currency']
             return xpath_to_download_dict
 
         def go_to_the_site(ticker:str=self.ticker):
@@ -183,40 +179,45 @@ class DividendScraper:
     
             :result: a number of rows in a table.
             """
-            # //table[@class='data-table normal-table']//tr/td[@data-column='Reported Dividend']/../../tr[position()=10]
             how_many_elements_in_table = len(self.driver.find_elements('xpath',check_xpath))
             logger.warning(f"Found {how_many_elements_in_table} rows in a table to download.")
             return how_many_elements_in_table
 
-        def get_elements_from_one_page_from_table() -> list:
+        def check_last_Ex_Date() -> bool:
+
+            xpaths_data = xpath_generator()
+            ex_date_xpath = xpaths_data['Ex-Date']
+            last_ex_date = self.driver.find_element("xpath",ex_date_xpath).text
+            print(last_ex_date)
+
+            # if ex_date in base - return true else return false
+            return True
+
+        def get_elements_from_one_page_from_table(page_no:int) -> list:
             """
             It downloads the data from the table of one page.
-            :return: a dictionary with data from one page of the table
+
+            :page_no: a number of page which is currently scraped.
+            :return: a list with data from one page of the table
             """
             one_table_data_list = []
             
+            xpaths_data = xpath_generator()
             how_many_rows_in_table = check_how_many_elements_in_table(xpaths_data['Reported Dividend'])
+
             for row in range(1,how_many_rows_in_table+1,1):
                 one_table_data_dict = {}
-                one_table_data_dict.update({'Ticker':ticker,
-                                            'Reported Dividend':f"//table[@class='data-table normal-table']//descendant::*[@data-column='Reported Dividend'][1]",
-                                            'Ex-Date':f"//table[@class='data-table normal-table']//descendant::*[@data-column='Ex-Date'][1]",
-                                            })
+                for key, value in xpaths_data.items():
+                    value_text = self.driver.find_element("xpath",f"{value}[{row}]").text
+                    logger.warning(f"Downloading the table: ticker: {ticker}, row: {row}, page: {page_no}, data: {key}: {value_text}")
+                    one_table_data_dict.update({'Ticker':ticker,
+                                                key:value_text,
+                                                })
+
                 one_table_data_list.append(one_table_data_dict)                   
-                                            
-                
-                # for xpath_name, xpath in xpaths_data.items():
-                #     xpath_with_row = f"{xpath}[{row}]"
-                #     one_table_data_dict = {}
-                #     one_table_data_dict.update({'Ticker':ticker,
-                #                                 xpath_name:self.driver.find_element("xpath", xpath_with_row).text,
-                #                                 "id":row,
-                #                                 })
-                #     one_table_data_list.append(one_table_data_dict)
-            
+                                        
             return one_table_data_list
 
-        xpaths_data = xpath_generator()
         go_to_the_site()
         if not check_if_stock_pays_dividend():
             how_many_pages_on_site = how_many_pages()
@@ -224,49 +225,17 @@ class DividendScraper:
                 return False
             else:
                 if how_many_pages_on_site == 1:
-                    one_table_data_dict =  get_elements_from_one_page_from_table()
+                    one_table_data_dict =  get_elements_from_one_page_from_table(page_no=1)
+                    dividend_data_for_one_ticker.extend(one_table_data_dict)
+                    return dividend_data_for_one_ticker
                 else:
-                    one_table_data_dict = get_elements_from_one_page_from_table()
-                    print(one_table_data_dict)
-                    _dividend_data.update(one_table_data_dict)
-
-
-
-            
-                
-
-
-        # go_to_the_site()
-        # if not check_if_stock_pays_dividend():
-        #     how_many_pages_on_site = how_many_pages()
-        #     if how_many_pages_on_site != None:
-        #         xpaths_data = xpath_generator()
-        #         if how_many_pages_on_site == 1:
-        #             how_many_rows_in_table = check_how_many_elements_in_table(xpaths_data['Reported Dividend'])
-        #             _dividend_data.update({'Ticker':ticker})
-        #             for row in range(1,how_many_rows_in_table,1):
-        #                 for xpath_name, data in xpaths_data.items():
-        #                     xpath_row_position = f"{data}/../../tr[position()={row}]/td"
-        #                     _dividend_data.update({xpath_name:self.driver.find_element("xpath", xpath_row_position).text})
-        #                     _dividend_data.update({"id":row})
-        #             return _dividend_data
-        #         else: 
-        #             for i in range(1, how_many_pages_on_site+1, 1):
-        #                 how_many_rows_in_table = check_how_many_elements_in_table(xpaths_data['Reported Dividend'])
-        #                 for row in range(1,how_many_rows_in_table+1,1):
-        #                     #print(ticker+"_"+str(row*i))
-        #                     for xpath_name, data in xpaths_data.items():
-        #                         xpath_with_row = f"{data}[{row}]"
-        #                         _dividend_data.update({'Ticker':ticker+"_"+str(row*i)})
-        #                         _dividend_data.update({xpath_name:self.driver.find_element("xpath", xpath_with_row).text})
-        #                         _dividend_data.update({"id":row*i})
-        #                 next_page_click(i)
-        #             return _dividend_data
-        #     else:
-        #         return False
-        # else: 
-        #     return False
-    
+                    for page in range(1, how_many_pages_on_site+1, 1):
+                        check_last_Ex_Date()
+                        one_table_data_dict = get_elements_from_one_page_from_table(page_no=page)
+                        dividend_data_for_one_ticker.extend(one_table_data_dict)
+                        next_page_click(page)
+                    return dividend_data_for_one_ticker
+  
     def save_dividend_data_to_file(self) -> pickle:
         """
         Saves data from every iteration to pickle file.
@@ -304,13 +273,13 @@ class DividendScraper:
         """
         self.restore_dividends_data()
         tickers = self.adjust_tickers_from_yahoo_to_gurufocus()
-        # temp
-        for ticker in list(tickers.values())[2:3]:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
-            downloaded_data_dict = self.download_dividend_data_from_given_ticker(ticker=ticker)
-            if downloaded_data_dict == False:
+        # for ticker in list(tickers.values())[0:4]:    
+        for ticker in tickers.values():                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+            downloaded_data_list = self.download_dividend_data_from_given_ticker(ticker=ticker)
+            if downloaded_data_list == False:
                 continue
             else:
-                self.dividend_data.append(downloaded_data_dict)
+                self.dividend_data.append(downloaded_data_list)
                 self.save_dividend_data_to_file()
                 print(self.dividend_data)
         self.quit()
