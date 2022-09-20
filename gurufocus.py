@@ -80,6 +80,7 @@ class DividendScraper:
         tickers_exceptions = {
             'BRK-A':'NEOE:BRK',
             'BRK-B':'NEOE:BRK',
+            'BML':'TSE:4694',
         }
 
         tickers_to_adjust = self.get_tickers_links_and_convert_to_tickers()
@@ -192,7 +193,11 @@ class DividendScraper:
             """
             xpaths_data = xpath_generator()
             ex_date_xpath = xpaths_data['Ex-Date']
-            last_ex_date = self.driver.find_element("xpath",ex_date_xpath).text
+            try:
+                last_ex_date = self.driver.find_element("xpath",ex_date_xpath).text
+            except NoSuchElementException:
+                # When it doesn't found a ticker this error occurs
+                return False
             try:
                 filtered_list = list(filter(lambda d: (d['Ticker'] == ticker_to_check) & (d['Ex-Date'] == last_ex_date), self.dividend_data))
             except TypeError:
@@ -221,7 +226,10 @@ class DividendScraper:
             for row in range(1,how_many_rows_in_table+1,1):
                 one_table_data_dict = {}
                 for key, value in xpaths_data.items():
-                    value_text = self.driver.find_element("xpath",f"{value}[{row}]").text
+                    try:
+                        value_text = self.driver.find_element("xpath",f"{value}[{row}]").text
+                    except NoSuchElementException:
+                        value_text = 'No column found'
                     logger.warning(f"Downloading the table: ticker: {ticker}, row: {row}, page: {page_no}, data: {key}: {value_text}")
                     one_table_data_dict.update({'Ticker':ticker,
                                                 key:value_text,
