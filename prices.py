@@ -17,8 +17,8 @@ import logging
 import json
 import re
 
-logging.basicConfig(filename='prices.log', filemode='w', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
-
+level = logging.INFO
+logging.basicConfig(filename='prices.log', filemode='w', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=level)
 console = logging.StreamHandler()
 formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
 console.setFormatter(formatter)
@@ -34,7 +34,7 @@ class PricesScraper():
         :wait_time:time in seconds for Selenium's wait option for handling operations such as
         waiting for element to be visible on the website.
         """
-        logger.warning('Stared program prices.py')
+        logger.info('Stared program prices.py')
         self.wait_time = wait_time
         self.tickers_and_prices_list = []    
 
@@ -58,7 +58,7 @@ class PricesScraper():
                 self.wait.until(EC.visibility_of_element_located((By.XPATH, cookie_button_accept_xpath)))
                 self.driver.find_element("xpath", cookie_button_accept_xpath).click()
             except TimeoutException:
-                logger.warning('Cookie Accept Button not found.')
+                logger.info('Cookie Accept Button not found.')
     
     def login_to_yahoo(self) -> None:
         """
@@ -81,7 +81,7 @@ class PricesScraper():
         self.driver.get('https://login.yahoo.com/')
         enter_login_or_pass(login, login_username_xpath)
         enter_login_or_pass(password, login_passwd_xpath)
-        logger.warning('Logged in.')
+        logger.info('Logged in.')
 
     def go_to_screeners_url(self) -> None:
         """
@@ -89,7 +89,7 @@ class PricesScraper():
         """
         screeners_url = f"https://finance.yahoo.com/screener/"
         self.driver.get(screeners_url)           
-        logger.warning(f"Entered to: {screeners_url}")
+        logger.info(f"Entered to: {screeners_url}")
 
     def get_screener_url(self) -> str:
         """Takes current URL.
@@ -108,12 +108,12 @@ class PricesScraper():
         if choose_screener == 'USA_Mid_Large_Mega_Cap':
             self.driver.find_element('xpath', USA_Mid_Large_Mega_Cap_xpath).click()
             sleep(self.wait_time)
-            logger.warning(f'Entered to: {choose_screener} ')
+            logger.info(f'Entered to: {choose_screener} ')
 
     def change_offset_to_100(self):
         """Changes offset to 100 in URL"""   
         self.driver.get(f"{self.driver.current_url}?offset=0&count=100")
-        logger.warning('Set table count to 100.')
+        logger.info('Set table count to 100.')
         
     def go_to_next_page(self, page:int, screener_url:str):
         """It redirects to url with offset for a given page"""
@@ -132,7 +132,7 @@ class PricesScraper():
         next_button_enabled_xpath = "//button[@class='Va(m) H(20px) Bd(0) M(0) P(0) Fz(s) Pstart(10px) O(n):f Fw(500) C($linkColor)']"
         
         if len(self.driver.find_elements("xpath", next_button_disabled_xpath)) > 0:
-            logger.warning("Next button disabled - it means that scraper is on a last page")
+            logger.info("Next button disabled - it means that scraper is on a last page")
             return False
         else:
             bool_value = True if len(self.driver.find_elements("xpath", next_button_enabled_xpath)) > 0 else False
@@ -147,7 +147,7 @@ class PricesScraper():
         
         if bool_value == True:
             self.driver.find_element("xpath", next_button_enabled_xpath).click()
-            logger.warning("Next button clicked")
+            logger.info("Next button clicked")
         else:
             pass
     
@@ -161,7 +161,7 @@ class PricesScraper():
         how_many_tickers = self.driver.find_element("xpath", how_many_tickers_xpath).text
         
         how_many_pages = int(re.findall('\d+', how_many_tickers)[2]) // 100
-        logger.warning(f'Tickers are in {how_many_pages} pages.')
+        logger.info(f'Tickers are in {how_many_pages} pages.')
         return how_many_pages
 
     
@@ -175,7 +175,7 @@ class PricesScraper():
         ticker_xpath = "//a[contains(@data-test, 'quoteLink' )]"
 
         how_many_tickers_per_site = len(self.driver.find_elements("xpath", ticker_xpath))
-        logger.warning(f"Tickers per current table view: {how_many_tickers_per_site}")
+        logger.info(f"Tickers per current table view: {how_many_tickers_per_site}")
 
         for i in range(1, (int(how_many_tickers_per_site)+1), 1):
             self.wait.until(EC.visibility_of_element_located((By.XPATH, f'({ticker_xpath})[{i}]')))
@@ -183,7 +183,7 @@ class PricesScraper():
             price_xpath = f"//td[contains(@aria-label,'Price')]/fin-streamer[@data-symbol='{ticker}']"
             price = self.driver.find_element("xpath", price_xpath).text
             tickers_and_prices_dict.update({ticker:price})
-            logger.warning(f"Downloaded: {ticker}:{price}")
+            logger.info(f"Downloaded: {ticker}:{price}")
 
         return tickers_and_prices_dict
 
@@ -191,10 +191,10 @@ class PricesScraper():
         """
         It saves tickers and prices list to pickle file. 
         """
-        save_pickle_tickers_file = open('prices.pkl', 'wb')
-        pickle.dump(self.tickers_and_prices_list, save_pickle_tickers_file)
-        save_pickle_tickers_file.close()
-        logger.warning('The data has been saved to pickle file.')
+        with open('prices.pkl', 'wb') as save_pickle_tickers_file:
+            pickle.dump(self.tickers_and_prices_list, save_pickle_tickers_file)
+        
+        logger.info('The data has been saved to pickle file.')
 
     def logout_yahoo(self):
         """
@@ -205,19 +205,19 @@ class PricesScraper():
         
         self.driver.get(logout_url)
         self.driver.find_element("xpath", logout_confirmation_button).click()
-        logger.warning('Logged out.')
+        logger.info('Logged out.')
     
     def get_tickers_and_prices(self):
         self.login_to_yahoo()
-        self.accept_cookie()
+        #self.accept_cookie()
         self.go_to_screeners_url()
         self.click_selected_screener('USA_Mid_Large_Mega_Cap')
         screener_url = self.get_screener_url()
         self.change_offset_to_100()
         how_many_pages = self.get_how_many_pages()
         for page in range(0, (how_many_pages)+1, 1):
-            logger.warning(f"{'='*10}\nPage number {int(page)} is being downloaded.")
-            logger.warning(self.driver.current_url)
+            logger.info(f"{'='*10}\nPage number {int(page)} is being downloaded.")
+            logger.info(self.driver.current_url)
             data = self.get_tickers_and_prices_from_one_table_view()
             self.tickers_and_prices_list.append(data)
             self.save_to_pickle()
