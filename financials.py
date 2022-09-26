@@ -392,6 +392,3 @@ class FinancialScraper:
         self.get_financials_data()
         self.quit()
         print(self.financial_data)
-
-get_data = FinancialScraper(wait_time=5, check_data_by_date=True)
-get_data.main()

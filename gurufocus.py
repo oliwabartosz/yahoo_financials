@@ -313,5 +313,3 @@ class DividendScraper:
 
 # https://www.gurufocus.com/stock/BML/dividend -> ERROR
 
-get_data = DividendScraper(wait_time=5)
-get_data.main()
