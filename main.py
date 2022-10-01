@@ -3,7 +3,6 @@
 from prices_and_tickers_links import PricesAndTickerLinksScraper
 from financials import FinancialScraper
 from gurufocus import DividendScraper
-from tmp import dupa
 import argparse
 
 args_sources = ['Y', 'G']
