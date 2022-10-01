@@ -4,29 +4,37 @@ from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+#from webdriver_manager.chrome import ChromeDriverManager
+#from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
+
 from concurrent.futures import ThreadPoolExecutor
 from selenium.common.exceptions import TimeoutException
 import pickle
 import os
 import re
+import json
+from time import sleep
 
 import logging
 
 from datetime import date
 
 
-logging.basicConfig(filename='gurufocus.log', filemode='w', format='%(asctime)s - %(message)s', 
+logging.basicConfig(filename='gurufocus.log', filemode='w', format='%(asctime)s - %(message)s',
                     datefmt='%d-%b-%y %H:%M:%S')
 console = logging.StreamHandler()
 formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
 console.setFormatter(formatter)
 logging.getLogger().addHandler(console)
 logger = logging.getLogger('gurufocus.area1')
+
+# <script data-v-4abb4f0b="" type="text/javascript">
+# document.getElementById("div1").removeAttribute("align");
 
 class DividendScraper:
     def __init__(self, wait_time:int, check_data_by_date:bool=True):
@@ -35,16 +43,44 @@ class DividendScraper:
         self.dividend_data = []
         self.check_data_by_date = check_data_by_date
 
-        # SELENIUM SETTINGS 
+        # SELENIUM SETTINGS
         options = Options()
-        options.add_argument("--headless")
+        #options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
-        options.add_experimental_option("detach", True)
-        
-        self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-        self.driver = webdriver.Chrome(options=options)
+        #options.set_preference('javascript.enabled', False)
+        #options.add_experimental_option("detach", True)
+        #self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+        self.driver = webdriver.Firefox(options=options)
         self.wait = WebDriverWait(self.driver, wait_time)
+
+
+    def login(self) -> None:
+        login_xpath = "//input[@id='login-dialog-name-input']"
+        password_xpath = "//input[@id='login-dialog-pass-input']"
+
+        with open('login.json') as login_file:
+            login_data = json.load(login_file)
+
+        login = login_data['login']
+        password = login_data['password']
+
+        def enter_login_and_pass(text:str, xpath:str):
+            input_form = self.driver.find_element("xpath", xpath)
+            input_form.send_keys(text)
+            input_form.send_keys(Keys.ENTER)
+            sleep(self.wait_time)
+
+        self.driver.get('https://www.gurufocus.com/login')
+        logger.warning(f"Opened login page")
+        enter_login_and_pass(login, login_xpath)
+        enter_login_and_pass(password, password_xpath)
+        logger.warning("Logged in.")
+
+    def logout(self) -> None:
+        logout_xpath = "//i[@class='p-r-md gfp-log-out']"
+        logout = self.driver.find_element("xpath", logout_xpath)
+        self.driver.execute_script("arguments[0].click();",logout)
 
     def get_tickers_links_and_convert_to_tickers(self) -> list:
         """
@@ -55,7 +91,7 @@ class DividendScraper:
         https://finance.yahoo.com/quote/BCE/?p=BCE -> BCE
 
         :return: it returns a list with tickers from converted links.
-        """ 
+        """
         _tickers = []
         _ticker_regex = r"https:\/\/finance\.yahoo\.com\/quote\/[A-Z-.]+\?p="
         if os.path.isfile('tickers.pkl'):
@@ -67,7 +103,7 @@ class DividendScraper:
         else:
             logger.warning("No tickers.pkl file.")
             return _tickers
-    
+
     def adjust_tickers_from_yahoo_to_gurufocus(self) -> dict:
         """
         It takes the tickers from list and cut all unnecessary things (like dashes, etc.)
@@ -94,7 +130,7 @@ class DividendScraper:
                 adjusted_tickers_dict.update({ticker:ticker_adjusted})
                 adjusted_tickers_dict.update(tickers_exceptions)
             logger.warning("Dictionary with adjusted tickers to gurufocus has been generated.")
-            
+
             # Removing duplicates in values
             temporary_dict = {val:key for key, val in adjusted_tickers_dict.items()}
             duplicates_removed_dict = {val:key for key, val in temporary_dict.items()}
@@ -110,11 +146,11 @@ class DividendScraper:
         """
         self.ticker = ticker
         dividend_data_for_one_ticker = []
-        
+
         def xpath_generator() -> dict:
             """It generates a dict of xpaths for downloading the data."""
             xpaths_to_download = ['Reported Currency','Reported Dividend','Ex-Date','Record Date','Pay Date','Type','Frequency']
-            xpath_to_download_dict = {xpath_name:f"//table[@class='data-table normal-table']//descendant::*[@data-column='{xpath_name}']" 
+            xpath_to_download_dict = {xpath_name:f"//table[@class='data-table normal-table']//descendant::*[@data-column='{xpath_name}']"
                                       for xpath_name in xpaths_to_download}
             return xpath_to_download_dict
 
@@ -125,7 +161,7 @@ class DividendScraper:
             """
             logger.warning(f"Entering do https://www.gurufocus.com/stock/{ticker}/dividend")
             self.driver.get(f"https://www.gurufocus.com/stock/{ticker}/dividend")
-            
+
         def check_if_stock_pays_dividend() -> bool:
             """
             Check if specific xpath exists and returns True or False.
@@ -142,7 +178,7 @@ class DividendScraper:
             """
             This function looks for how many pages are available on GuruFocus' dividend website's table.
             It can return False to skip downloading specific ticker, especially when it doesn't exists.
-        
+
             :return: a number of how many pages are in the table or False when TimeoutException occurs.
             """
             how_many_pages_xpath = "//div[@class='aio-tabs-item right-float']"
@@ -169,15 +205,18 @@ class DividendScraper:
             """
             It clicks the next page in table with dividends.
             """
-            next_page_xpath = "//i[@class='el-icon el-icon-arrow-right']"
+            next_page_xpath = "//button[@class='btn-next']"
             self.wait.until(EC.visibility_of_element_located((By.XPATH, next_page_xpath)))
-            self.driver.find_element("xpath", next_page_xpath).click()
+            next_page = self.driver.find_element("xpath", next_page_xpath)
+            self.driver.execute_script("arguments[0].click();",next_page)
+            # self.wait.until(EC.element_to_be_clickable((By.XPATH, next_page_xpath)))
+            # next_page.click()
             logger.warning(f'Next page clicked (page no. {i})')
 
         def check_how_many_elements_in_table(check_xpath:str) -> int:
             """
             Check how many rows is in the table.
-    
+
             :result: a number of rows in a table.
             """
             how_many_elements_in_table = len(self.driver.find_elements('xpath',check_xpath))
@@ -186,7 +225,7 @@ class DividendScraper:
 
         def check_last_Ex_Date(ticker_to_check:str) -> bool:
             """
-            It take the Ex-Date value for first row in data table on the website for specific ticker, 
+            It take the Ex-Date value for first row in data table on the website for specific ticker,
             and compares it with the previously downloaded data.py
 
             :return: True, if the Ex-Date for Ticker has been found, otherwise False (empty list).
@@ -219,7 +258,7 @@ class DividendScraper:
             :return: a list with data from one page of the table
             """
             one_table_data_list = []
-            
+
             xpaths_data = xpath_generator()
             how_many_rows_in_table = check_how_many_elements_in_table(xpaths_data['Reported Dividend'])
 
@@ -235,8 +274,8 @@ class DividendScraper:
                                                 key:value_text,
                                                 })
 
-                one_table_data_list.append(one_table_data_dict)                   
-                                        
+                one_table_data_list.append(one_table_data_dict)
+
             return one_table_data_list
 
         go_to_the_site()
@@ -258,7 +297,7 @@ class DividendScraper:
                         dividend_data_for_one_ticker.extend(one_table_data_dict)
                         next_page_click(page)
                     return dividend_data_for_one_ticker
-  
+
     def save_dividend_data_to_file(self) -> pickle:
         """
         Saves data from every iteration to pickle file.
@@ -274,7 +313,7 @@ class DividendScraper:
         """
         It checks if there is a pickle file, where previous data are held. If so,
         it upgrades the main list of dictionaries (which at the end is an output).
-        """ 
+        """
         if os.path.isfile('dividends.pkl'):
             self.restore_dividends_file = pickle.load(open('dividends.pkl','rb'))
             self.dividend_data = self.restore_dividends_file
@@ -287,7 +326,7 @@ class DividendScraper:
     def quit(self):
         """
         It ends the Selenium's session.
-        """ 
+        """
         self.driver.quit()
 
     def main(self):
@@ -296,8 +335,9 @@ class DividendScraper:
         """
         self.restore_dividends_data()
         tickers = self.adjust_tickers_from_yahoo_to_gurufocus()
-        # for ticker in list(tickers.values())[0:4]:    
-        for ticker in tickers.values():                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+        # for ticker in list(tickers.values())[0:4]:
+        self.login()
+        for ticker in tickers.values():
             downloaded_data_list = self.download_dividend_data_from_given_ticker(ticker=ticker)
             if downloaded_data_list == False:
                 continue
@@ -309,6 +349,7 @@ class DividendScraper:
                     pass
                 self.save_dividend_data_to_file()
                 print(self.dividend_data)
+        self.logout()
         self.quit()
 
 # https://www.gurufocus.com/stock/BML/dividend -> ERROR

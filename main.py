@@ -3,6 +3,7 @@
 from prices_and_tickers_links import PricesAndTickerLinksScraper
 from financials import FinancialScraper
 from gurufocus import DividendScraper
+from tmp import dupa
 import argparse
 
 args_sources = ['Y', 'G']
@@ -12,6 +13,7 @@ parser = argparse.ArgumentParser(description='Download data from Yahoo or Gurufo
 subparser = parser.add_subparsers(dest='command')
 yahoo = subparser.add_parser('yahoo')
 gurufocus = subparser.add_parser('gurufocus')
+tmp = subparser.add_parser('tmp')
 
 yahoo.add_argument('-t','--tickers', action='store_true',help="Download tickers links from Yahoo")
 yahoo.add_argument('-p','--prices', action='store_true', help="Download prices from Yahoo")
@@ -24,11 +26,11 @@ if __name__ == '__main__':
     if args.command == 'yahoo':
         if args.prices:
             prices = PricesAndTickerLinksScraper(
-                                                                wait_time=5, 
-                                                                log_name='prices.area', 
-                                                                pickle_filename='prices.pkl', 
-                                                                log_filename='prices.log'
-                                                                )
+                                                wait_time=5, 
+                                                log_name='prices.area', 
+                                                pickle_filename='prices.pkl', 
+                                                log_filename='prices.log'
+                                                )
             prices.get_tickers_and_prices()
         elif args.tickers:
             tickers_links = PricesAndTickerLinksScraper(
