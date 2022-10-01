@@ -45,7 +45,7 @@ class DividendScraper:
 
         # SELENIUM SETTINGS
         options = Options()
-        #options.add_argument("--headless")
+        options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         #options.set_preference('javascript.enabled', False)
