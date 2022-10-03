@@ -1,59 +1,24 @@
-from xml.etree.ElementPath import xpath_tokenizer
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchElementException
-from selenium.common.exceptions import StaleElementReferenceException
-from selenium.webdriver.chrome.service import Service
-#from webdriver_manager.chrome import ChromeDriverManager
-#from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.action_chains import ActionChains
-
-from concurrent.futures import ThreadPoolExecutor
-from selenium.common.exceptions import TimeoutException
 import pickle
 import os
 import re
 import json
 from time import sleep
 
-import logging
+import config
 
 from datetime import date
 
 
-logging.basicConfig(filename='gurufocus.log', filemode='w', format='%(asctime)s - %(message)s',
-                    datefmt='%d-%b-%y %H:%M:%S')
-console = logging.StreamHandler()
-formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
-console.setFormatter(formatter)
-logging.getLogger().addHandler(console)
-logger = logging.getLogger('gurufocus.area1')
-
 # <script data-v-4abb4f0b="" type="text/javascript">
 # document.getElementById("div1").removeAttribute("align");
+logger_1 = config.set_logger('dividends.log', 'gurufocus.area1')
 
 class DividendScraper:
-    def __init__(self, wait_time:int, check_data_by_date:bool=True):
-        logger.warning(f'Stared program gurufocus.py')
-        self.wait_time = wait_time
+    def __init__(self, check_data_by_date:bool=True):
+        # self.logger_1 = config.set_logger('dividends.log', 'gurufocus.area1')
+        logger_1.info(f'Stared program gurufocus.py')
         self.dividend_data = []
         self.check_data_by_date = check_data_by_date
-
-        # SELENIUM SETTINGS
-        options = Options()
-        options.add_argument("--headless")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        #options.set_preference('javascript.enabled', False)
-        #options.add_experimental_option("detach", True)
-        #self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-        self.driver = webdriver.Firefox(options=options)
-        self.wait = WebDriverWait(self.driver, wait_time)
-
 
     def login(self) -> None:
         login_xpath = "//input[@id='login-dialog-name-input']"
@@ -66,21 +31,21 @@ class DividendScraper:
         password = login_data['password']
 
         def enter_login_and_pass(text:str, xpath:str):
-            input_form = self.driver.find_element("xpath", xpath)
+            input_form = config.driver.find_element("xpath", xpath)
             input_form.send_keys(text)
-            input_form.send_keys(Keys.ENTER)
-            sleep(self.wait_time)
+            input_form.send_keys(config.Keys.ENTER)
+            sleep(config.sleep_time)
 
-        self.driver.get('https://www.gurufocus.com/login')
-        logger.warning(f"Opened login page")
+        config.driver.get('https://www.gurufocus.com/login')
+        logger_1.info(f"Opened login page")
         enter_login_and_pass(login, login_xpath)
         enter_login_and_pass(password, password_xpath)
-        logger.warning("Logged in.")
+        logger_1.info("Logged in.")
 
     def logout(self) -> None:
         logout_xpath = "//i[@class='p-r-md gfp-log-out']"
-        logout = self.driver.find_element("xpath", logout_xpath)
-        self.driver.execute_script("arguments[0].click();",logout)
+        logout = config.driver.find_element("xpath", logout_xpath)
+        config.driver.execute_script("arguments[0].click();",logout)
 
     def get_tickers_links_and_convert_to_tickers(self) -> list:
         """
@@ -101,7 +66,7 @@ class DividendScraper:
                 _tickers.append(ticker)
             return _tickers
         else:
-            logger.warning("No tickers.pkl file.")
+            logger_1.info("No tickers.pkl file.")
             return _tickers
 
     def adjust_tickers_from_yahoo_to_gurufocus(self) -> dict:
@@ -121,7 +86,7 @@ class DividendScraper:
 
         tickers_to_adjust = self.get_tickers_links_and_convert_to_tickers()
         if not tickers_to_adjust:
-            logger.warning(f"List with tickers is empty! Exiting.")
+            logger_1.info(f"List with tickers is empty! Exiting.")
             self.quit()
             exit(1)
         else:
@@ -129,7 +94,7 @@ class DividendScraper:
                 ticker_adjusted = re.sub('(-|\.)[A-Z]*', '', ticker)
                 adjusted_tickers_dict.update({ticker:ticker_adjusted})
                 adjusted_tickers_dict.update(tickers_exceptions)
-            logger.warning("Dictionary with adjusted tickers to gurufocus has been generated.")
+            logger_1.info("Dictionary with adjusted tickers to gurufocus has been generated.")
 
             # Removing duplicates in values
             temporary_dict = {val:key for key, val in adjusted_tickers_dict.items()}
@@ -159,19 +124,19 @@ class DividendScraper:
             It opens the chosen site.
             :ticker: a string that is specific ticker, taken from the main function ('download_dividend_data').
             """
-            logger.warning(f"Entering do https://www.gurufocus.com/stock/{ticker}/dividend")
-            self.driver.get(f"https://www.gurufocus.com/stock/{ticker}/dividend")
+            logger_1.info(f"Entering do https://www.gurufocus.com/stock/{ticker}/dividend")
+            config.driver.get(f"https://www.gurufocus.com/stock/{ticker}/dividend")
 
         def check_if_stock_pays_dividend() -> bool:
             """
             Check if specific xpath exists and returns True or False.
             """
             check_xpath = "//strong[contains(text(),'does not pay dividend.')]"
-            element_exist = True if len(self.driver.find_elements("xpath", check_xpath)) > 0 else False
+            element_exist = True if len(config.driver.find_elements("xpath", check_xpath)) > 0 else False
             if element_exist:
-                logger.warning(f"check_if_stock_pays_dividend returned {element_exist}. Skipping that.")
+                logger_1.info(f"check_if_stock_pays_dividend returned {element_exist}. Skipping that.")
             else:
-                logger.warning(f"check_if_stock_pays_dividend returned {element_exist}. Getting the data.")
+                logger_1.info(f"check_if_stock_pays_dividend returned {element_exist}. Getting the data.")
             return element_exist
 
         def how_many_pages() -> int:
@@ -183,12 +148,12 @@ class DividendScraper:
             """
             how_many_pages_xpath = "//div[@class='aio-tabs-item right-float']"
             try:
-                self.wait.until(EC.visibility_of_element_located((By.XPATH, "//span[@class='t-label' and text()='/100']")))
-            except TimeoutException:
-                logger.warning(f"Error: TimeoutException. Returning None")
+                config.wait.until(config.EC.visibility_of_element_located((config.By.XPATH, "//span[@class='t-label' and text()='/100']")))
+            except config.TimeoutException:
+                logger_1.info(f"Error: TimeoutException. Returning None")
                 return None
-            how_many_pages_str = self.driver.find_element("xpath", how_many_pages_xpath).text
-            logger.warning(f"how_many_pages_int as string returned: {how_many_pages_str}")
+            how_many_pages_str = config.driver.find_element("xpath", how_many_pages_xpath).text
+            logger_1.info(f"how_many_pages_int as string returned: {how_many_pages_str}")
             how_many_pages_int = int(how_many_pages_str.split()[1])
             if how_many_pages_int % 10 == 0:
                 how_many_pages_int = how_many_pages_int // 10
@@ -198,7 +163,7 @@ class DividendScraper:
             if how_many_pages_int == 0:
                 how_many_pages_int = 1
 
-            logger.warning(f"how_many_pages_int: {how_many_pages_int}")
+            logger_1.info(f"how_many_pages_int: {how_many_pages_int}")
             return how_many_pages_int
 
         def next_page_click(i:int):
@@ -206,12 +171,12 @@ class DividendScraper:
             It clicks the next page in table with dividends.
             """
             next_page_xpath = "//button[@class='btn-next']"
-            self.wait.until(EC.visibility_of_element_located((By.XPATH, next_page_xpath)))
-            next_page = self.driver.find_element("xpath", next_page_xpath)
-            self.driver.execute_script("arguments[0].click();",next_page)
-            # self.wait.until(EC.element_to_be_clickable((By.XPATH, next_page_xpath)))
+            config.wait.until(config.EC.visibility_of_element_located((config.By.XPATH, next_page_xpath)))
+            next_page = config.driver.find_element("xpath", next_page_xpath)
+            config.driver.execute_script("arguments[0].click();",next_page)
+            # config.wait.until(config.EC.element_to_be_clickable((config.By.XPATH, next_page_xpath)))
             # next_page.click()
-            logger.warning(f'Next page clicked (page no. {i})')
+            logger_1.info(f'Next page clicked (page no. {i})')
 
         def check_how_many_elements_in_table(check_xpath:str) -> int:
             """
@@ -219,8 +184,8 @@ class DividendScraper:
 
             :result: a number of rows in a table.
             """
-            how_many_elements_in_table = len(self.driver.find_elements('xpath',check_xpath))
-            logger.warning(f"Found {how_many_elements_in_table} rows in a table to download.")
+            how_many_elements_in_table = len(config.driver.find_elements('xpath',check_xpath))
+            logger_1.info(f"Found {how_many_elements_in_table} rows in a table to download.")
             return how_many_elements_in_table
 
         def check_last_Ex_Date(ticker_to_check:str) -> bool:
@@ -233,8 +198,8 @@ class DividendScraper:
             xpaths_data = xpath_generator()
             ex_date_xpath = xpaths_data['Ex-Date']
             try:
-                last_ex_date = self.driver.find_element("xpath",ex_date_xpath).text
-            except NoSuchElementException:
+                last_ex_date = config.driver.find_element("xpath",ex_date_xpath).text
+            except config.NoSuchElementException:
                 # When it doesn't found a ticker this error occurs
                 return False
             try:
@@ -242,13 +207,13 @@ class DividendScraper:
             except TypeError:
                 return False
             if not filtered_list:
-                logger.warning(f'{ticker_to_check}: No data found. Downloading data for.')
+                logger_1.info(f'{ticker_to_check}: No data found. Downloading data for.')
                 return False
             else:
                 if last_ex_date in filtered_list[0]["Ex-Date"]:
-                    logger.warning(f"{ticker_to_check}: Data is up to date. Skipping that ticker.")
+                    logger_1.info(f"{ticker_to_check}: Data is up to date. Skipping that ticker.")
                     return True
-                logger.warning('check_last_Ex_Date: Something went wrong. Returned None')
+                logger_1.info('check_last_Ex_Date: Something went wrong. Returned None')
 
         def get_elements_from_one_page_from_table(page_no:int) -> list:
             """
@@ -266,10 +231,10 @@ class DividendScraper:
                 one_table_data_dict = {}
                 for key, value in xpaths_data.items():
                     try:
-                        value_text = self.driver.find_element("xpath",f"{value}[{row}]").text
-                    except NoSuchElementException:
+                        value_text = config.driver.find_element("xpath",f"{value}[{row}]").text
+                    except config.NoSuchElementException:
                         value_text = 'No column found'
-                    logger.warning(f"Downloading the table: ticker: {ticker}, row: {row}, page: {page_no}, data: {key}: {value_text}")
+                    logger_1.info(f"Downloading the table: ticker: {ticker}, row: {row}, page: {page_no}, data: {key}: {value_text}")
                     one_table_data_dict.update({'Ticker':ticker,
                                                 key:value_text,
                                                 })
@@ -307,7 +272,7 @@ class DividendScraper:
         save_pickle_dividends_file = open('dividends.pkl', 'wb')
         pickle.dump(self.dividend_data, save_pickle_dividends_file)
         save_pickle_dividends_file.close()
-        logger.warning("Saved data to dividends.pkl")
+        logger_1.info("Saved data to dividends.pkl")
 
     def restore_dividends_data(self):
         """
@@ -317,17 +282,17 @@ class DividendScraper:
         if os.path.isfile('dividends.pkl'):
             self.restore_dividends_file = pickle.load(open('dividends.pkl','rb'))
             self.dividend_data = self.restore_dividends_file
-            logger.warning("Dividends data has been restored from .pkl file.")
+            logger_1.info("Dividends data has been restored from .pkl file.")
             return True
         else:
-            logger.warning("Dividends data has not been restored from .pkl file. There's no such file.")
+            logger_1.info("Dividends data has not been restored from .pkl file. There's no such file.")
             return False
 
     def quit(self):
         """
         It ends the Selenium's session.
         """
-        self.driver.quit()
+        config.driver.quit()
 
     def main(self):
         """
@@ -348,9 +313,7 @@ class DividendScraper:
                     # if there is no data for a ticker, it returns empty list (NoneType)
                     pass
                 self.save_dividend_data_to_file()
-                print(self.dividend_data)
         self.logout()
         self.quit()
-
 # https://www.gurufocus.com/stock/BML/dividend -> ERROR
 

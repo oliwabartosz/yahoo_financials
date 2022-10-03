@@ -1,23 +1,12 @@
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchElementException
-from selenium.common.exceptions import StaleElementReferenceException
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
-from concurrent.futures import ThreadPoolExecutor
-from selenium.common.exceptions import TimeoutException
-from time import sleep
 import pickle
 import os
 import re
-import logging
-
 from datetime import date
+import config
 
+
+
+import logging
 
 logging.basicConfig(filename='financials.log', filemode='w', format='%(asctime)s - %(message)s', 
                     datefmt='%d-%b-%y %H:%M:%S')
@@ -43,19 +32,7 @@ class FinancialScraper:
         no matter the last statement date.
         """ 
         logger.info('Stared program financials.py')
-        self.wait_time = wait_time
         self.check_data_by_date = check_data_by_date
-
-        # SELENIUM SETTINGS 
-        options = Options()
-        options.add_argument("--headless")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_experimental_option("detach", True)
-        
-        self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-        self.driver = webdriver.Chrome(options=options)
-        self.wait = WebDriverWait(self.driver, wait_time)
 
         self.financial_data = []
         self.income_statement_positions_list = [
@@ -109,11 +86,11 @@ class FinancialScraper:
         """ 
         cookie_button_accept_xpath = "//button[@class='btn primary']"
         try:
-            self.wait.until(EC.visibility_of_element_located((By.XPATH, cookie_button_accept_xpath)))
-            self.driver.find_element("xpath", cookie_button_accept_xpath).click()
+            config.wait.until(config.EC.visibility_of_element_located((config.By.XPATH, cookie_button_accept_xpath)))
+            config.driver.find_element("xpath", cookie_button_accept_xpath).click()
             logger.warning("Cookies accepted.")
             return True
-        except TimeoutException as e:
+        except config.TimeoutException as e:
             logger.warning("Cookies confirmation not needed.")
             return False
 
@@ -123,10 +100,10 @@ class FinancialScraper:
         """ 
         expand_all_data_xpath ="//*[starts-with(text(),'Expand All')]"
         try:
-            self.wait.until(EC.visibility_of_element_located((By.XPATH, expand_all_data_xpath)))
-            self.driver.find_element("xpath", expand_all_data_xpath).click()
+            config.wait.until(config.EC.visibility_of_element_located((config.By.XPATH, expand_all_data_xpath)))
+            config.driver.find_element("xpath", expand_all_data_xpath).click()
             logger.warning("'Expand all' clicked.")
-        except TimeoutException as e:
+        except config.TimeoutException as e:
             logger.warning("The table is already expanded.")
         return True
 
@@ -136,13 +113,13 @@ class FinancialScraper:
         """ 
         try:
             logger.warning(f"CLICKING: {xpath}")
-            self.driver.find_element("xpath", xpath).click()
-            self.wait.until(EC.visibility_of_element_located((By.XPATH, "(//span[@class='Va(m)'])[last()]")))
+            config.driver.find_element("xpath", xpath).click()
+            config.wait.until(config.EC.visibility_of_element_located((config.By.XPATH, "(//span[@class='Va(m)'])[last()]")))
             logger.warning(f"CLICKED: {xpath}")
 
             return True
-        except TimeoutException:
-            logger.warning(f'Error: {TimeoutException}. Probably no data for that ticker.')
+        except config.TimeoutException:
+            logger.warning(f'Error: {config.TimeoutException}. Probably no data for that ticker.')
             return False
 
     def restore_finacials_data(self):
@@ -163,7 +140,7 @@ class FinancialScraper:
         """
         It ends the Selenium's session.
         """ 
-        self.driver.quit()
+        config.driver.quit()
 
 
     def get_xpaths_for_financial_data(self, list_with_financial_positions_to_generate:list, 
@@ -247,15 +224,15 @@ class FinancialScraper:
 
                 last_date_xpath = "//span[text()='Breakdown']/../../div[3]"
                 logger.warning(f'Checking the last date for {ticker_to_check}')
-                self.driver.get(f'https://finance.yahoo.com/quote/{ticker_to_check}/financials?p={ticker_to_check}')
+                config.driver.get(f'https://finance.yahoo.com/quote/{ticker_to_check}/financials?p={ticker_to_check}')
                 self.accept_cookie()
                 try:
-                    self.wait.until(EC.visibility_of_element_located((By.XPATH, last_date_xpath)))
-                    last_date = self.driver.find_element("xpath", last_date_xpath).text
+                    config.wait.until(config.EC.visibility_of_element_located((config.By.XPATH, last_date_xpath)))
+                    last_date = config.driver.find_element("xpath", last_date_xpath).text
                     last_date = f"{last_date.split('/')[0]}_{last_date.split('/')[2]}"
                     logger.warning(f'Last date check:{last_date}')
-                except TimeoutException:
-                    logger.warning(f"Error finding the last available date of statement TimeoutException \
+                except config.TimeoutException:
+                    logger.warning(f"Error finding the last available date of statement config.TimeoutException \
                                     Probably the table is empty for that ticker ({ticker_to_check}).")
                     last_date = None
                 return last_date
@@ -297,7 +274,7 @@ class FinancialScraper:
 
                 :return: the number of columns, eg. 4.
                 """
-                how_many_columns_in_table = len(self.driver.find_elements("xpath","//div[@class='D(tbr) C($primaryColor)']/div"))
+                how_many_columns_in_table = len(config.driver.find_elements("xpath","//div[@class='D(tbr) C($primaryColor)']/div"))
                 return how_many_columns_in_table
 
             def get_currency() -> str:
@@ -309,9 +286,9 @@ class FinancialScraper:
                 """
                 try: 
                     currency_xpath = "//span/span[contains(text(), 'Currency in')]"
-                    currency = self.driver.find_element("xpath", currency_xpath).text
+                    currency = config.driver.find_element("xpath", currency_xpath).text
                     currency = currency.split('.')[0].rsplit()[-1]
-                except NoSuchElementException:
+                except config.NoSuchElementException:
                     currency = 'USD'
                 
                 return currency
@@ -331,12 +308,12 @@ class FinancialScraper:
                     else:
                         for key, value in xpaths_dict.items():
                             try:
-                                financial_value = self.driver.find_element("xpath", f"{value}/../../../div[{i}]").text
-                            except NoSuchElementException:
-                                logger.warning(f"{key} / Error: NoSuchElementException")
+                                financial_value = config.driver.find_element("xpath", f"{value}/../../../div[{i}]").text
+                            except config.NoSuchElementException:
+                                logger.warning(f"{key} / Error: config.NoSuchElementException")
                                 continue
 
-                            date_of_statement = self.driver.find_element("xpath", f"//span[text()='Breakdown']/../../div[{i}]").text
+                            date_of_statement = config.driver.find_element("xpath", f"//span[text()='Breakdown']/../../div[{i}]").text
                             if date_of_statement != "TTM":
                                 month_and_year = f"{date_of_statement.split('/')[0]}_{date_of_statement.split('/')[2]}"
                             else:
@@ -377,7 +354,7 @@ class FinancialScraper:
             check_if_data_exists = check_if_data_has_been_downloaded_before(ticker_to_check=ticker)
             if (not check_if_data_exists) or (check_if_data_exists != KeyError):
                 logger.warning(f"Downloading ticker: {ticker}")
-                self.driver.get(f'https://finance.yahoo.com/quote/{ticker}/financials?p={ticker}') 
+                config.driver.get(f'https://finance.yahoo.com/quote/{ticker}/financials?p={ticker}') 
                 self.accept_cookie()
                 self.financial_data.append(get_financial_data_for_ticker(ticker))
                 save_financial_data_to_file()

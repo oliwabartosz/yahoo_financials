@@ -3,6 +3,7 @@
 from prices_and_tickers_links import PricesAndTickerLinksScraper
 from financials import FinancialScraper
 from gurufocus import DividendScraper
+# from gurufocus import logger_1
 import argparse
 
 args_sources = ['Y', 'G']
@@ -25,15 +26,13 @@ if __name__ == '__main__':
     if args.command == 'yahoo':
         if args.prices:
             prices = PricesAndTickerLinksScraper(
-                                                wait_time=5, 
                                                 log_name='prices.area', 
                                                 pickle_filename='prices.pkl', 
                                                 log_filename='prices.log'
                                                 )
             prices.get_tickers_and_prices()
         elif args.tickers:
-            tickers_links = PricesAndTickerLinksScraper(
-                                                        wait_time=5, 
+            tickers_links = PricesAndTickerLinksScraper(                                                      
                                                         log_name='tickers_links.area', 
                                                         pickle_filename='tickers.pkl', 
                                                         log_filename='tickers.log'
@@ -41,10 +40,10 @@ if __name__ == '__main__':
             
             tickers_links.get_tickers_links() 
         elif args.financial:
-            financial_data = FinancialScraper(wait_time=5, check_data_by_date=True)
+            financial_data = FinancialScraper(check_data_by_date=True)
             financial_data.main()
             
     elif args.command == 'gurufocus':
-        dividends = DividendScraper(wait_time=5)
+        dividends = DividendScraper()
         dividends.main()
 
