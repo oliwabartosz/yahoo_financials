@@ -5,4 +5,4 @@ Xpath.pdf
 __pycache__
 *.pkl
 *.log
-login
+login.json
