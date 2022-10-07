@@ -5,6 +5,7 @@ import json
 from time import sleep
 import time
 import config
+from tqdm import tqdm
 
 logger_1 = config.Logger.setup(name='gurufocus', file_name='dividends.log')
 
@@ -358,7 +359,7 @@ class DividendScraper:
         tickers = self.adjust_tickers_from_yahoo_to_gurufocus()
         # for ticker in list(tickers.values())[0:4]:
         self.login()
-        for ticker in tickers.values():
+        for number, ticker in enumerate(tqdm(tickers.values())):
             is_last_download_day_equal_to_today = self.check_last_download_date(
                 ticker_to_check=ticker)
             if is_last_download_day_equal_to_today:

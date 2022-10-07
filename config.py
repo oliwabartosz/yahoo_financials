@@ -50,9 +50,18 @@ class Logger:
         log_format = "%(asctime)s - %(name)-12s: %(levelname)-8s %(message)s"
         log_filemode = "w"  # w - overwrite, a - append
         log_level = logging.INFO
-        logging.basicConfig(filename=file_name, format=log_format,
-                            filemode=log_filemode, level=log_level, force=True)
+
+        # logging.basicConfig(filename=log_file, format=log_format,
+        #                     filemode=log_filemode, level=log_level, force=True)
+
         logger = logging.getLogger(name)
+
+        # File output line
+        logger.setLevel(logging.INFO)
+        formatter = logging.Formatter(log_format)
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
 
         # Console output line
         console_handler = logging.StreamHandler()
@@ -61,38 +70,8 @@ class Logger:
         console_handler.setFormatter(log_formatter)
         logger.addHandler(console_handler)
         logger.propagate = 0
-        # logger.handlers = console_handler
 
         return logger
-
-
-def set_logger(filename: str, area: str) -> "func":
-    """
-    Sets the logger.
-
-    Attributes:
-    :filename: set a filename in which logs will be saved.
-    :area: set an area, which is the name of specific logger.
-
-    :return: function logging.getLogger 
-    """
-    # logging.FileHandler(filename)
-
-    logger = logging.getLogger(area)
-
-    level = logging.INFO
-    logging.basicConfig(filename=filename, filemode='w',
-                        format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=level)
-
-    # CONSOLE HANDLER
-    console = logging.StreamHandler()
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)-12s: %(levelname)-8s %(message)s')
-    console.setFormatter(formatter)
-    logger.addHandler(console)
-    #logger.propagate = 0
-
-    return logger
 
 
 # OTHER
