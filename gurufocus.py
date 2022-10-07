@@ -4,6 +4,7 @@ import re
 import json
 from time import sleep
 import time
+from datetime import datetime, timedelta
 import config
 from tqdm import tqdm
 
@@ -11,11 +12,15 @@ logger_1 = config.Logger.setup(name='gurufocus', file_name='dividends.log')
 
 
 class DividendScraper:
-    def __init__(self, check_data_by_date: bool = True):
-        # self.logger_1 = config.set_logger('dividends.log', 'gurufocus.area1')
+    def __init__(self, time_delta: int = 0, check_data_by_date: bool = True):
         logger_1.info(f'Stared program gurufocus.py')
         self.dividend_data = []
         self.check_data_by_date = check_data_by_date
+        self.timedelta = time_delta
+        logger_1.info(f'Timedelta set to {self.timedelta}')
+
+        self.day = datetime.now() - timedelta(days=self.timedelta)
+        self.day = self.day.strftime("%Y-%m-%d")
 
     def login(self) -> None:
         login_xpath = "//input[@id='login-dialog-name-input']"
@@ -105,26 +110,26 @@ class DividendScraper:
 
     def check_last_download_date(self, ticker_to_check: str) -> bool:
         """
-        Checks the last download date in previously downloaded data and if it is the same with a date of running program it returns True.
+        Checks the last download date in previously downloaded data and if it is the same with a date given it returns True.
+        The day is computed by subtracting the day of running program by specified timedelta. 
 
-        :return: True if today's date is equal to the date of last download presented in previously downloaded data,
+        :return: True if date is equal to the date of last download presented in previously downloaded data
         else False. 
         """
-        today = time.strftime("%Y-%m-%d")
         try:
             filtered_list = list(filter(lambda d: (d['Ticker'] == ticker_to_check) & (
-                d['Last_Download_date'] == today), self.dividend_data))
+                d['Last_Download_date'] == self.day), self.dividend_data))
         except TypeError:
             return False
         except KeyError:
             return False
         if not filtered_list:
             logger_1.info(
-                f'{ticker_to_check}: No data found (\'Last_downloaded_data\'). Downloading data.')
+                f'{ticker_to_check}: No data found (\'Last_Download_date\') == {self.day}. Downloading data.')
             return False
         else:
             logger_1.info(
-                'Last_downloaded_data is equal to today\'s. Download skipped.')
+                f'Last_Download_date is equal to set date {self.day}. Download skipped.')
             return True
 
     def download_dividend_data_from_given_ticker(self, ticker: str) -> list:
