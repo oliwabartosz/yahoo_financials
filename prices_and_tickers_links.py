@@ -1,19 +1,16 @@
+from importlib.metadata import files
 from time import sleep
 import pickle
 import os
-import logging
 import json
 import re
 import config
 
-level = logging.INFO
-logging.basicConfig(format='%(asctime)s - %(name)-12s: %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=level)
-console = logging.StreamHandler()
 
 class PricesAndTickerLinksScraper():
     """Download prices for tickers from yahoo as dictionary or tickers links as list"""
 
-    def __init__(self, log_name:str, pickle_filename:str, log_filename:str):
+    def __init__(self, log_name: str, pickle_filename: str, log_filename: str, clear_log: bool = False):
         """
         :log_name: name of the log area.
         :pickle_filename: put a filename to save as pickle files.
@@ -23,28 +20,43 @@ class PricesAndTickerLinksScraper():
         self.log_name = log_name
         self.pickle_filename = pickle_filename
         self.log_filename = log_filename
+        self.clear_log = clear_log
 
-        self.logger = logging.getLogger(self.log_name)
-        file_handler = logging.FileHandler(log_filename)
-        formatter = logging.Formatter('%(asctime)s - %(name)-12s: %(levelname)-8s %(message)s')
-        file_handler.setFormatter(formatter)
-        self.logger.addHandler(file_handler)
-        self.logger.info('Stared program prices_and_tickers_links.py')
+        self.logger_1 = config.Logger.setup(
+            name=self.log_name, file_name=self.log_filename)
+        self.logger_1.info('Stared program prices_and_tickers_links.py')
 
         self.tickers_and_prices_list = []
         self.tickers_links = []
-      
+
+    def clear_log_files(self, files_to_delete: list):
+        """ 
+        Checks if clear_log is True. If it is, it deletes files specified in a list.
+
+        file_to_delete: a list of files to delete
+        """
+
+        if self.clear_log:
+            self.logger_1.info(
+                f'Folowinng logging files will be deleted {files_to_delete}')
+            for file in files_to_delete:
+                os.remove(file) if os.path.exists(file) == True else None
+        else:
+            pass
+
     def accept_cookie(self) -> None:
-            """
-            It clicks accept button for cookie confirmation.
-            """ 
-            cookie_button_accept_xpath = "//button[@class='btn primary']"
-            try:
-                config.wait.until(config.EC.visibility_of_element_located((config.By.XPATH, cookie_button_accept_xpath)))
-                config.driver.find_element("xpath", cookie_button_accept_xpath).click()
-            except config.TimeoutException:
-                self.logger.info('Cookie Accept Button not found.')
-    
+        """
+        It clicks accept button for cookie confirmation.
+        """
+        cookie_button_accept_xpath = "//button[@class='btn primary']"
+        try:
+            config.wait.until(config.EC.visibility_of_element_located(
+                (config.By.XPATH, cookie_button_accept_xpath)))
+            config.driver.find_element(
+                "xpath", cookie_button_accept_xpath).click()
+        except config.TimeoutException:
+            self.logger_1.info('Cookie Accept Button not found.')
+
     def login_to_yahoo(self) -> None:
         """
         It goes to login page and type username and password" 
@@ -66,46 +78,46 @@ class PricesAndTickerLinksScraper():
         config.driver.get('https://login.yahoo.com/')
         enter_login_or_pass(login, login_username_xpath)
         enter_login_or_pass(password, login_passwd_xpath)
-        self.logger.info('Logged in.')
+        self.logger_1.info('Logged in.')
 
     def go_to_screeners_url(self) -> None:
         """
         Redirects to the page with previously set screeners. 
         """
         screeners_url = f"https://finance.yahoo.com/screener/"
-        config.driver.get(screeners_url)           
-        self.logger.info(f"Entered to: {screeners_url}")
+        config.driver.get(screeners_url)
+        self.logger_1.info(f"Entered to: {screeners_url}")
 
     def get_screener_url(self) -> str:
         """Takes current URL.
-        
+
         :return: a string with current URL.
         """
         current_url = config.driver.current_url
         return current_url
 
-    def click_selected_screener(self, choose_screener:str) -> None:
+    def click_selected_screener(self, choose_screener: str) -> None:
         """
         Clicks selected screener from screeners list.
         """
         USA_Mid_Large_Mega_Cap_xpath = "//a[contains(text(), 'USA_Mid_Large_Mega')]"
 
         if choose_screener == 'USA_Mid_Large_Mega_Cap':
-            config.driver.find_element('xpath', USA_Mid_Large_Mega_Cap_xpath).click()
+            config.driver.find_element(
+                'xpath', USA_Mid_Large_Mega_Cap_xpath).click()
             sleep(config.sleep_time)
-            self.logger.info(f'Entered to: {choose_screener} ')
+            self.logger_1.info(f'Entered to: {choose_screener} ')
 
     def change_offset_to_100(self):
-        """Changes offset to 100 in URL"""   
+        """Changes offset to 100 in URL"""
         config.driver.get(f"{config.driver.current_url}?offset=0&count=100")
-        self.logger.info('Set table count to 100.')
-        
-    def go_to_next_page(self, page:int, screener_url:str):
+        self.logger_1.info('Set table count to 100.')
+
+    def go_to_next_page(self, page: int, screener_url: str):
         """It redirects to url with offset for a given page"""
 
-        offset = page * 100 # converts page to offset in url
+        offset = page * 100  # converts page to offset in url
         config.driver.get(f'{screener_url}?count=100&offset={offset}')
-
 
     def check_if_next_button_is_available(self) -> bool:
         """
@@ -115,12 +127,14 @@ class PricesAndTickerLinksScraper():
         """
         next_button_disabled_xpath = "//button[@class='Va(m) H(20px) Bd(0) M(0) P(0) Fz(s) Pstart(10px) O(n):f Fw(500) C($gray)' and @disabled]"
         next_button_enabled_xpath = "//button[@class='Va(m) H(20px) Bd(0) M(0) P(0) Fz(s) Pstart(10px) O(n):f Fw(500) C($linkColor)']"
-        
+
         if len(config.driver.find_elements("xpath", next_button_disabled_xpath)) > 0:
-            self.logger.info("Next button disabled - it means that scraper is on a last page")
+            self.logger_1.info(
+                "Next button disabled - it means that scraper is on a last page")
             return False
         else:
-            bool_value = True if len(config.driver.find_elements("xpath", next_button_enabled_xpath)) > 0 else False
+            bool_value = True if len(config.driver.find_elements(
+                "xpath", next_button_enabled_xpath)) > 0 else False
             return bool_value
 
     def click_next_button(self) -> None:
@@ -129,13 +143,14 @@ class PricesAndTickerLinksScraper():
         """
         next_button_enabled_xpath = "//button[@class='Va(m) H(20px) Bd(0) M(0) P(0) Fz(s) Pstart(10px) O(n):f Fw(500) C($linkColor)']"
         bool_value = self.check_if_next_button_is_available()
-        
+
         if bool_value == True:
-            config.driver.find_element("xpath", next_button_enabled_xpath).click()
-            self.logger.info("Next button clicked")
+            config.driver.find_element(
+                "xpath", next_button_enabled_xpath).click()
+            self.logger_1.info("Next button clicked")
         else:
             pass
-    
+
     def get_how_many_pages(self) -> int:
         """
         It takes a text and returns the number of how many pages is in table for offset of 100
@@ -143,32 +158,36 @@ class PricesAndTickerLinksScraper():
         :return: an integer (whole number) of pages that the table is divided for offset equal to 100.
         """
         how_many_tickers_xpath = "//span[@class='Mstart(15px) Fw(500) Fz(s)']"
-        how_many_tickers = config.driver.find_element("xpath", how_many_tickers_xpath).text
-        
+        how_many_tickers = config.driver.find_element(
+            "xpath", how_many_tickers_xpath).text
+
         how_many_pages = int(re.findall('\d+', how_many_tickers)[2]) // 100
-        self.logger.info(f'Tickers are in {how_many_pages} pages.')
+        self.logger_1.info(f'Tickers are in {how_many_pages} pages.')
         return how_many_pages
 
-    
     def get_tickers_and_prices_from_one_table_view(self) -> dict:
         """
         Downloads the tickers and its prices from one table view (one table view is ca. 100 queries)
-        
+
         :return: a dictionary, i.e. {ticker:price}
         """
         tickers_and_prices_dict = {}
         ticker_xpath = "//a[contains(@data-test, 'quoteLink' )]"
 
-        how_many_tickers_per_site = len(config.driver.find_elements("xpath", ticker_xpath))
-        self.logger.info(f"Tickers per current table view: {how_many_tickers_per_site}")
+        how_many_tickers_per_site = len(
+            config.driver.find_elements("xpath", ticker_xpath))
+        self.logger_1.info(
+            f"Tickers per current table view: {how_many_tickers_per_site}")
 
         for i in range(1, (int(how_many_tickers_per_site)+1), 1):
-            config.wait.until(config.EC.visibility_of_element_located((config.By.XPATH, f'({ticker_xpath})[{i}]')))
-            ticker = config.driver.find_element("xpath", f'({ticker_xpath})[{i}]').text
+            config.wait.until(config.EC.visibility_of_element_located(
+                (config.By.XPATH, f'({ticker_xpath})[{i}]')))
+            ticker = config.driver.find_element(
+                "xpath", f'({ticker_xpath})[{i}]').text
             price_xpath = f"//td[contains(@aria-label,'Price')]/fin-streamer[@data-symbol='{ticker}']"
             price = config.driver.find_element("xpath", price_xpath).text
-            tickers_and_prices_dict.update({ticker:price})
-            self.logger.info(f"Downloaded: {ticker}:{price}")
+            tickers_and_prices_dict.update({ticker: price})
+            self.logger_1.info(f"Downloaded: {ticker}:{price}")
 
         return tickers_and_prices_dict
 
@@ -178,16 +197,20 @@ class PricesAndTickerLinksScraper():
         """
         ticker_xpath = "//a[contains(@data-test, 'quoteLink' )]"
 
-        how_many_tickers_per_site = len(config.driver.find_elements("xpath", ticker_xpath))
-        self.logger.info(f"Tickers per current table view: {how_many_tickers_per_site}")
+        how_many_tickers_per_site = len(
+            config.driver.find_elements("xpath", ticker_xpath))
+        self.logger_1.info(
+            f"Tickers per current table view: {how_many_tickers_per_site}")
 
         for i in range(1, (int(how_many_tickers_per_site)+1), 1):
-            config.wait.until(config.EC.visibility_of_element_located((config.By.XPATH, f'({ticker_xpath})[{i}]')))
-            ticker = config.driver.find_element("xpath", f'({ticker_xpath})[{i}]').get_attribute('href')
+            config.wait.until(config.EC.visibility_of_element_located(
+                (config.By.XPATH, f'({ticker_xpath})[{i}]')))
+            ticker = config.driver.find_element(
+                "xpath", f'({ticker_xpath})[{i}]').get_attribute('href')
             self.tickers_links.append(ticker)
-            self.logger.info(f"Downloaded: {ticker}")
+            self.logger_1.info(f"Downloaded: {ticker}")
 
-    def delete_file(self, file:str):
+    def delete_file(self, file: str):
         """
         It deletes selected file.
 
@@ -196,11 +219,11 @@ class PricesAndTickerLinksScraper():
         """
         if os.path.exists(file):
             os.remove(file)
-            self.logger.info(f"The file: {file} has been deleted.")
+            self.logger_1.info(f"The file: {file} has been deleted.")
         else:
             pass
 
-    def save_to_pickle(self, prices:bool, tickers_links:bool) -> pickle:
+    def save_to_pickle(self, prices: bool, tickers_links: bool) -> pickle:
         """
         It saves tickers and prices list to pickle file. 
         """
@@ -211,8 +234,8 @@ class PricesAndTickerLinksScraper():
 
         with open(self.pickle_filename, 'wb') as save_pickle_tickers_file:
             pickle.dump(object_to_file, save_pickle_tickers_file)
-        
-        self.logger.info('The data has been saved to pickle file.')
+
+        self.logger_1.info('The data has been saved to pickle file.')
 
     def logout_yahoo(self):
         """
@@ -220,42 +243,54 @@ class PricesAndTickerLinksScraper():
         """
         logout_confirmation_button = "//input[@class='pure-button puree-button-secondary page-button']"
         logout_url = "https://login.yahoo.com/config/login/?.intl=us&.lang=en-US&.src=finance&logout_all=1&.direct=1&.done=https://www.yahoo.com"
-        
+
         config.driver.get(logout_url)
         config.driver.find_element("xpath", logout_confirmation_button).click()
-        self.logger.info('Logged out.')
-    
+        self.logger_1.info('Logged out.')
+
     def get_tickers_and_prices(self):
-        self.login_to_yahoo()
-        #self.accept_cookie()
-        self.go_to_screeners_url()
-        self.click_selected_screener('USA_Mid_Large_Mega_Cap')
-        screener_url = self.get_screener_url()
-        self.change_offset_to_100()
-        how_many_pages = self.get_how_many_pages()
-        for page in range(0, (how_many_pages)+1, 1):
-            self.logger.info(f"{'='*10}\nPage number {int(page)} is being downloaded.")
-            self.logger.info(config.driver.current_url)
-            data = self.get_tickers_and_prices_from_one_table_view()
-            self.tickers_and_prices_list.append(data)
-            self.save_to_pickle(prices=True, tickers_links=False)
-            self.go_to_next_page(page=page+1,screener_url=screener_url)
-        self.logout_yahoo
-        config.driver.quit()
-        
+        try:
+            self.clear_log(files_to_delete=['prices.log'])
+            self.login_to_yahoo()
+            # self.accept_cookie()
+            self.go_to_screeners_url()
+            self.click_selected_screener('USA_Mid_Large_Mega_Cap')
+            screener_url = self.get_screener_url()
+            self.change_offset_to_100()
+            how_many_pages = self.get_how_many_pages()
+            for page in range(0, (how_many_pages)+1, 1):
+                self.logger_1.info(
+                    f"{'='*10}\nPage number {int(page)} is being downloaded.")
+                self.logger_1.info(config.driver.current_url)
+                data = self.get_tickers_and_prices_from_one_table_view()
+                self.tickers_and_prices_list.append(data)
+                self.save_to_pickle(prices=True, tickers_links=False)
+                self.go_to_next_page(page=page+1, screener_url=screener_url)
+            self.logout_yahoo
+            config.driver.quit()
+        except:
+            self.logger_1.exception("Error. Rerunning.")
+            os.system("python main.py yahoo -p")
+
     def get_tickers_links(self):
-        self.delete_file('tickers.pkl')
-        self.login_to_yahoo()
-        self.go_to_screeners_url()
-        self.click_selected_screener('USA_Mid_Large_Mega_Cap')
-        screener_url = self.get_screener_url()
-        self.change_offset_to_100()
-        how_many_pages = self.get_how_many_pages()
-        for page in range(0, (how_many_pages)+1, 1):
-            self.logger.info(f"{'='*10}\nPage number {int(page)} is being downloaded.")
-            self.logger.info(config.driver.current_url)
-            self.get_tickers_links_from_one_table_view()
-            self.save_to_pickle(prices=False, tickers_links=True)
-            self.go_to_next_page(page=page+1,screener_url=screener_url)
-        self.logout_yahoo
-        config.driver.quit()
+        try:
+            self.clear_log_files(files_to_delete=['tickers.log'])
+            self.delete_file('tickers.pkl')
+            self.login_to_yahoo()
+            self.go_to_screeners_url()
+            self.click_selected_screener('USA_Mid_Large_Mega_Cap')
+            screener_url = self.get_screener_url()
+            self.change_offset_to_100()
+            how_many_pages = self.get_how_many_pages()
+            for page in range(0, (how_many_pages)+1, 1):
+                self.logger_1.info(
+                    f"{'='*10}\nPage number {int(page)} is being downloaded.")
+                self.logger_1.info(config.driver.current_url)
+                self.get_tickers_links_from_one_table_view()
+                self.save_to_pickle(prices=False, tickers_links=True)
+                self.go_to_next_page(page=page+1, screener_url=screener_url)
+            self.logout_yahoo
+            config.driver.quit()
+        except:
+            self.logger_1.exception("Error. Rerunning.")
+            os.system("python main.py yahoo -t")

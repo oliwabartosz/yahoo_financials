@@ -12,11 +12,12 @@ logger_1 = config.Logger.setup(name='gurufocus', file_name='dividends.log')
 
 
 class DividendScraper:
-    def __init__(self, time_delta: int = 0, check_data_by_date: bool = True):
+    def __init__(self, time_delta: int = 0, check_data_by_date: bool = True, clear_log: bool = False):
         logger_1.info(f'Stared program gurufocus.py')
         self.dividend_data = []
         self.check_data_by_date = check_data_by_date
         self.timedelta = time_delta
+        self.clear_log = clear_log
         logger_1.info(f'Timedelta set to {self.timedelta}')
 
         self.day = datetime.now() - timedelta(days=self.timedelta)
@@ -43,6 +44,18 @@ class DividendScraper:
         enter_login_and_pass(login, login_xpath)
         enter_login_and_pass(password, password_xpath)
         logger_1.info("Logged in.")
+
+    def clear_log(self, files_to_delete: list):
+        """ 
+        Checks if clear_log is True. If it is, it deletes files specified in a list.
+
+        file_to_delete: a list of files to delete
+        """
+        if self.clear_log:
+            for file in files_to_delete:
+                os.remove(file) if os.path.exists(file) == True else None
+        else:
+            pass
 
     def logout(self) -> None:
         logout_xpath = "//i[@class='p-r-md gfp-log-out']"
@@ -360,26 +373,31 @@ class DividendScraper:
         """
         A core function. It updates main dictionary with data (output)
         """
-        self.restore_dividends_data()
-        tickers = self.adjust_tickers_from_yahoo_to_gurufocus()
-        # for ticker in list(tickers.values())[0:4]:
-        self.login()
-        for number, ticker in enumerate(tqdm(tickers.values())):
-            is_last_download_day_equal_to_today = self.check_last_download_date(
-                ticker_to_check=ticker)
-            if is_last_download_day_equal_to_today:
-                continue
-            downloaded_data_list = self.download_dividend_data_from_given_ticker(
-                ticker=ticker)
-            if downloaded_data_list == False:
-                continue
-            else:
-                try:
-                    self.dividend_data.extend(downloaded_data_list)
-                except TypeError:
-                    # if there is no data for a ticker, it returns empty list (NoneType)
-                    pass
-                self.save_dividend_data_to_file()
-        self.logout()
-        self.quit()
+        try:
+            self.clear_log(files_to_delete=['dividends.log'])
+            self.restore_dividends_data()
+            tickers = self.adjust_tickers_from_yahoo_to_gurufocus()
+            # for ticker in list(tickers.values())[0:4]:
+            self.login()
+            for number, ticker in enumerate(tqdm(tickers.values())):
+                is_last_download_day_equal_to_today = self.check_last_download_date(
+                    ticker_to_check=ticker)
+                if is_last_download_day_equal_to_today:
+                    continue
+                downloaded_data_list = self.download_dividend_data_from_given_ticker(
+                    ticker=ticker)
+                if downloaded_data_list == False:
+                    continue
+                else:
+                    try:
+                        self.dividend_data.extend(downloaded_data_list)
+                    except TypeError:
+                        # if there is no data for a ticker, it returns empty list (NoneType)
+                        pass
+                    self.save_dividend_data_to_file()
+            self.logout()
+            self.quit()
+        except:
+            logger_1.exception("Error. Rerunning.")
+            os.system("python main.py gurufocus -d")
 # https://www.gurufocus.com/stock/BML/dividend -> ERROR

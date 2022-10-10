@@ -51,9 +51,6 @@ class Logger:
         log_filemode = "w"  # w - overwrite, a - append
         log_level = logging.INFO
 
-        # logging.basicConfig(filename=log_file, format=log_format,
-        #                     filemode=log_filemode, level=log_level, force=True)
-
         logger = logging.getLogger(name)
 
         # File output line
