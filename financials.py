@@ -11,7 +11,7 @@ logger_1 = config.Logger.setup(name='finacials', file_name='financials.log')
 class FinancialScraper:
     """Scraper of financial data from income statement, balance sheet and cashflow"""
 
-    def __init__(self, wait_time: int, check_data_by_date: bool = True, clear_log: bool = False):
+    def __init__(self, check_data_by_date: bool = True, clear_log: bool = False):
         """
         :wait_time:time in seconds for Selenium's wait option for handling operations such as
         waiting for element to be visible on the website.
