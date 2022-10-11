@@ -50,7 +50,7 @@ class FinancialScraper:
             'Free Cash Flow',
         ]
 
-    def clear_log(self, files_to_delete: list):
+    def clear_log_files(self, files_to_delete: list):
         """ 
         Checks if clear_log is True. If it is, it deletes files specified in a list.
 
@@ -399,7 +399,7 @@ class FinancialScraper:
         A core function.
         """
         try:
-            self.clear_log(files_to_delete=['financials.log'])
+            self.clear_log_files(files_to_delete=['financials.log'])
             self.get_financials_data()
             self.quit()
         except:

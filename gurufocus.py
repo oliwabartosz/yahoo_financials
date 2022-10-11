@@ -45,7 +45,7 @@ class DividendScraper:
         enter_login_and_pass(password, password_xpath)
         logger_1.info("Logged in.")
 
-    def clear_log(self, files_to_delete: list):
+    def clear_log_files(self, files_to_delete: list):
         """ 
         Checks if clear_log is True. If it is, it deletes files specified in a list.
 
@@ -373,8 +373,10 @@ class DividendScraper:
         """
         A core function. It updates main dictionary with data (output)
         """
+        attempt = config.rerun_attempt_load()
+        logger_1.info(f'Running attempt no. {attempt}')
         try:
-            self.clear_log(files_to_delete=['dividends.log'])
+            self.clear_log_files(files_to_delete=['dividends.log'])
             self.restore_dividends_data()
             tickers = self.adjust_tickers_from_yahoo_to_gurufocus()
             # for ticker in list(tickers.values())[0:4]:
@@ -397,7 +399,11 @@ class DividendScraper:
                     self.save_dividend_data_to_file()
             self.logout()
             self.quit()
+            config.rerun_attempt_save(0)
         except:
-            logger_1.exception("Error. Rerunning.")
+            attempt += 1
+            config.rerun_attempt_save(attempt)
+            if attempt == 1:
+                logger_1.exception("Error. Rerunning.")
             os.system("python main.py gurufocus -d")
 # https://www.gurufocus.com/stock/BML/dividend -> ERROR

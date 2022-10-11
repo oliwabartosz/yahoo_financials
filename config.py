@@ -19,6 +19,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
 
+import pickle
 import logging
 
 # SELENIUM
@@ -73,3 +74,17 @@ class Logger:
 
 # OTHER
 sleep_time = 5
+
+
+def rerun_attempt_save(attempt: int) -> None:
+    with open('attempt.pkl', 'wb') as file_to_save:
+        pickle.dump(attempt, file_to_save)
+
+
+def rerun_attempt_load():
+    try:
+        with open('attempt.pkl', 'rb') as file_to_save:
+            attempt = pickle.load(file_to_save)
+            return attempt
+    except FileNotFoundError:
+        rerun_attempt_save(0)

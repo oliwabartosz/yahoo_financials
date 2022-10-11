@@ -250,7 +250,7 @@ class PricesAndTickerLinksScraper():
 
     def get_tickers_and_prices(self):
         try:
-            self.clear_log(files_to_delete=['prices.log'])
+            self.clear_log_files(files_to_delete=['prices.log'])
             self.login_to_yahoo()
             # self.accept_cookie()
             self.go_to_screeners_url()
