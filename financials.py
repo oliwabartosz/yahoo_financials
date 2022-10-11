@@ -398,10 +398,16 @@ class FinancialScraper:
         """
         A core function.
         """
+        attempt = config.rerun_attempt_load()
+        logger_1.info(f'Running attempt no. {attempt}')
+
         try:
             self.clear_log_files(files_to_delete=['financials.log'])
             self.get_financials_data()
             self.quit()
         except:
-            logger_1.exception("Error. Rerunning")
+            attempt += 1
+            config.rerun_attempt_save(attempt)
+            if attempt == 1:
+                logger_1.exception("Error. Rerunning.")
             os.system("python main.py yahoo -f")

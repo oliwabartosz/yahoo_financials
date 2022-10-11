@@ -249,6 +249,9 @@ class PricesAndTickerLinksScraper():
         self.logger_1.info('Logged out.')
 
     def get_tickers_and_prices(self):
+        attempt = config.rerun_attempt_load()
+        self.logger_1.info(f'Running attempt no. {attempt}')
+
         try:
             self.clear_log_files(files_to_delete=['prices.log'])
             self.login_to_yahoo()
@@ -269,10 +272,16 @@ class PricesAndTickerLinksScraper():
             self.logout_yahoo
             config.driver.quit()
         except:
-            self.logger_1.exception("Error. Rerunning.")
+            attempt += 1
+            config.rerun_attempt_save(attempt)
+            if attempt == 1:
+                self.logger_1.exception("Error. Rerunning.")
             os.system("python main.py yahoo -p")
 
     def get_tickers_links(self):
+        attempt = config.rerun_attempt_load()
+        self.logger_1.info(f'Running attempt no. {attempt}')
+
         try:
             self.clear_log_files(files_to_delete=['tickers.log'])
             self.delete_file('tickers.pkl')
@@ -292,5 +301,8 @@ class PricesAndTickerLinksScraper():
             self.logout_yahoo
             config.driver.quit()
         except:
-            self.logger_1.exception("Error. Rerunning.")
+            attempt += 1
+            config.rerun_attempt_save(attempt)
+            if attempt == 1:
+                self.logger_1.exception("Error. Rerunning.")
             os.system("python main.py yahoo -t")
