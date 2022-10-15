@@ -81,7 +81,7 @@ class FinancialScraper:
                 _tickers.append(ticker)
             return _tickers
         else:
-            logger_1.warning("No tickers.pkl file.")
+            logger_1.info("No tickers.pkl file.")
             return _tickers
 
     def accept_cookie(self) -> bool:
@@ -94,10 +94,10 @@ class FinancialScraper:
                 (config.By.XPATH, cookie_button_accept_xpath)))
             config.driver.find_element(
                 "xpath", cookie_button_accept_xpath).click()
-            logger_1.warning("Cookies accepted.")
+            logger_1.info("Cookies accepted.")
             return True
         except config.TimeoutException as e:
-            logger_1.warning("Cookies confirmation not needed.")
+            logger_1.info("Cookies confirmation not needed.")
             return False
 
     def expand_all_data_in_tables(self):
@@ -109,9 +109,9 @@ class FinancialScraper:
             config.wait.until(config.EC.visibility_of_element_located(
                 (config.By.XPATH, expand_all_data_xpath)))
             config.driver.find_element("xpath", expand_all_data_xpath).click()
-            logger_1.warning("'Expand all' clicked.")
+            logger_1.info("'Expand all' clicked.")
         except config.TimeoutException as e:
-            logger_1.warning("The table is already expanded.")
+            logger_1.info("The table is already expanded.")
         return True
 
     def click_on_financial_statement_link(self, xpath: str) -> bool:
@@ -119,15 +119,15 @@ class FinancialScraper:
         This function clicks the links to specific statements for actual ticker (stock).
         """
         try:
-            logger_1.warning(f"CLICKING: {xpath}")
+            logger_1.info(f"CLICKING: {xpath}")
             config.driver.find_element("xpath", xpath).click()
             config.wait.until(config.EC.visibility_of_element_located(
                 (config.By.XPATH, "(//span[@class='Va(m)'])[last()]")))
-            logger_1.warning(f"CLICKED: {xpath}")
+            logger_1.info(f"CLICKED: {xpath}")
 
             return True
         except config.TimeoutException:
-            logger_1.warning(
+            logger_1.info(
                 f'Error: {config.TimeoutException}. Probably no data for that ticker.')
             return False
 
@@ -140,11 +140,11 @@ class FinancialScraper:
             self.restore_financials_file = pickle.load(
                 open('financials.pkl', 'rb'))
             self.financial_data = self.restore_financials_file
-            logger_1.warning(
+            logger_1.info(
                 "Financial data has been restored from .pkl file.")
             return True
         else:
-            logger_1.warning(
+            logger_1.info(
                 "Financial data has not been restored from .pkl file. There's no such file.")
             return False
 
@@ -214,7 +214,7 @@ class FinancialScraper:
             save_pickle_financials_file = open('financials.pkl', 'wb')
             pickle.dump(self.financial_data, save_pickle_financials_file)
             save_pickle_financials_file.close()
-            logger_1.warning("Saved data to financials.pkl")
+            logger_1.info("Saved data to financials.pkl")
 
         def check_if_data_has_been_downloaded_before(ticker_to_check):
             """
@@ -233,7 +233,7 @@ class FinancialScraper:
                 """
 
                 last_date_xpath = "//span[text()='Breakdown']/../../div[3]"
-                logger_1.warning(
+                logger_1.info(
                     f'Checking the last date for {ticker_to_check}')
                 config.driver.get(
                     f'https://finance.yahoo.com/quote/{ticker_to_check}/financials?p={ticker_to_check}')
@@ -244,9 +244,9 @@ class FinancialScraper:
                     last_date = config.driver.find_element(
                         "xpath", last_date_xpath).text
                     last_date = f"{last_date.split('/')[0]}_{last_date.split('/')[2]}"
-                    logger_1.warning(f'Last date check:{last_date}')
+                    logger_1.info(f'Last date check:{last_date}')
                 except config.TimeoutException:
-                    logger_1.warning(f"Error finding the last available date of statement config.TimeoutException \
+                    logger_1.info(f"Error finding the last available date of statement config.TimeoutException \
                                     Probably the table is empty for that ticker ({ticker_to_check}).")
                     last_date = None
                 return last_date
@@ -259,20 +259,20 @@ class FinancialScraper:
                     filtered_list = list(
                         filter(lambda d: d['Ticker'] == ticker_to_check, self.financial_data))
                     if not filtered_list:
-                        logger_1.warning(
+                        logger_1.info(
                             f'{ticker_to_check}: Item does not exists')
                         return False
                     else:
                         if self.check_data_by_date == True:
                             last_date = get_last_date()
                             if last_date in filtered_list[0]["Month_and_year_of_data"]:
-                                logger_1.warning(
+                                logger_1.info(
                                     "There is a data point for last statement's date")
                                 return True
                         else:
                             return True
                 except KeyError:
-                    logger_1.warning(
+                    logger_1.info(
                         f'KeyError - there is no table for that ticker: {ticker_to_check}.')
                     return KeyError
 
@@ -317,7 +317,7 @@ class FinancialScraper:
                 """
                 A sub function of a function get_financial_data_for_ticker. It updates the dictionary for actual ticker.
                 """
-                logger_1.warning(f"Downloading data for: {ticker}")
+                logger_1.info(f"Downloading data for: {ticker}")
                 months_and_years_list = []
 
                 for i in range(2, range_end+1, 1):
@@ -332,7 +332,7 @@ class FinancialScraper:
                                 financial_value = config.driver.find_element(
                                     "xpath", f"{value}/../../../div[{i}]").text
                             except config.NoSuchElementException:
-                                logger_1.warning(
+                                logger_1.info(
                                     f"{key} / Error: config.NoSuchElementException")
                                 continue
 
@@ -383,7 +383,7 @@ class FinancialScraper:
             check_if_data_exists = check_if_data_has_been_downloaded_before(
                 ticker_to_check=ticker)
             if (not check_if_data_exists) or (check_if_data_exists != KeyError):
-                logger_1.warning(f"Downloading ticker: {ticker}")
+                logger_1.info(f"Downloading ticker: {ticker}")
                 config.driver.get(
                     f'https://finance.yahoo.com/quote/{ticker}/financials?p={ticker}')
                 self.accept_cookie()
@@ -391,7 +391,7 @@ class FinancialScraper:
                     get_financial_data_for_ticker(ticker))
                 save_financial_data_to_file()
             else:
-                logger_1.warning(f'Skipping {ticker}.')
+                logger_1.info(f'Skipping {ticker}.')
                 continue
 
     def main(self):

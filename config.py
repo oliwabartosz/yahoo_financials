@@ -24,7 +24,7 @@ import logging
 
 # SELENIUM
 options = FirefoxOptions()
-options.add_argument("--headless")
+# options.add_argument("--headless")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 
@@ -80,7 +80,7 @@ def rerun_attempt_save(attempt: int) -> None:
     with open('attempt.pkl', 'wb') as file_to_save:
         pickle.dump(attempt, file_to_save)
 
-
+# RERUNING COUNTER CONFIGUTATION
 def rerun_attempt_load():
     try:
         with open('attempt.pkl', 'rb') as file_to_save:
